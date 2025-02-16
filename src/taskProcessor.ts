@@ -52,12 +52,31 @@ export class TaskProcessor {
             sourceFile: file,
             taskText: this.extractTaskText(line, completed ? checkedPrefix : uncheckedPrefix),
             lineNumber,
-            completed
+            completed,
+            completionDate: this.extractCompletionDate(line)
         };
     }
 
     private extractTaskText(line: string, prefix: string): string {
-        return line.replace(prefix, '').trim();
+        // Remove the prefix first
+        let text = line.replace(prefix, '').trim();
+        
+        // Remove completion emoji and date if present
+        // Matches pattern: ✅ YYYY-MM-DD at the end of the string
+        return text.replace(/\s*✅\s*\d{4}-\d{2}-\d{2}$/, '');
+    }
+
+    private extractCompletionDate(line: string): string | null {
+        const match = line.match(/✅\s*(\d{4}-\d{2}-\d{2})$/);
+        return match ? match[1] : null;
+    }
+
+    private formatCompletionDate(): string {
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `✅ ${year}-${month}-${day}`;
     }
 
     async toggleTask(task: Task): Promise<void> {
@@ -69,11 +88,20 @@ export class TaskProcessor {
             const uncheckedPrefix = this.settings.taskPrefix;
             const checkedPrefix = uncheckedPrefix.replace('[ ]', '[x]');
             
-            // Toggle the checkbox state
-            const newLine = taskLine.replace(
-                task.completed ? checkedPrefix : uncheckedPrefix,
-                task.completed ? uncheckedPrefix : checkedPrefix
-            );
+            let newLine: string;
+            
+            if (task.completed) {
+                // Task is being unchecked - remove completion emoji and date
+                newLine = taskLine
+                    .replace(checkedPrefix, uncheckedPrefix)
+                    .replace(/\s*✅\s*\d{4}-\d{2}-\d{2}$/, '');
+            } else {
+                // Task is being checked - add completion emoji and date
+                newLine = taskLine
+                    .replace(uncheckedPrefix, checkedPrefix)
+                    .replace(/\s*✅\s*\d{4}-\d{2}-\d{2}$/, '') // Remove any existing completion date
+                    + ' ' + this.formatCompletionDate();
+            }
             
             lines[task.lineNumber] = newLine;
             await this.vault.modify(task.sourceFile, lines.join('\n'));

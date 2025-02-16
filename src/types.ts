@@ -11,6 +11,7 @@ export interface Task {
     taskText: string;
     lineNumber: number;
     completed: boolean;
+    completionDate: string | null;
 }
 
 export interface FileMetadata {
