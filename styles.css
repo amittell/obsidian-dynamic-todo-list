@@ -1,0 +1,32 @@
+.task-section-header {
+    display: block; /* Changed from flex to block for vertical layout */
+    padding: 8px;
+    cursor: pointer;
+    background: var(--background-secondary);
+    border-radius: 5px 5px 0 0;
+}
+
+.task-section-title-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.task-section-toggle {
+    margin-right: 8px;
+    color: var(--text-muted);
+}
+
+.task-section-title {
+    margin: 0;
+    flex-grow: 1;
+    font-size: 1.1em;
+}
+
+.task-section-dates {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    margin-left: 24px; /* Aligns with title text after toggle icon */
+}
+
+/* Rest of your existing CSS remains the same */
