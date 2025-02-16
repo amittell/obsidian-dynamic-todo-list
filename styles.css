@@ -16,17 +16,12 @@
 .task-section {
     margin-bottom: 20px;
     border-radius: 5px;
-    border: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
 }
 
 .task-section-header {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
     padding: 8px;
     cursor: pointer;
-    background: var(--background-secondary);
-    border-radius: 5px 5px 0 0;
 }
 
 .task-section-header:hover {
@@ -36,24 +31,26 @@
 .task-section-title-row {
     display: flex;
     align-items: center;
-    position: relative;
+    margin-bottom: 4px;
+    gap: 4px;
 }
 
 .task-section-toggle {
-    position: absolute;
-    left: 0;
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--text-muted);
 }
 
 .task-section-title {
     margin: 0;
-    padding-left: 24px;
     font-size: 1.1em;
     flex: 1;
 }
 
 .task-section-dates {
-    padding-left: 24px;
+    margin-left: 24px;
     font-size: 0.85em;
     color: var(--text-muted);
     display: flex;
@@ -66,7 +63,7 @@
 }
 
 .task-section-content {
-    padding: 10px;
+    padding: 8px 8px 8px 32px;
 }
 
 .task-section-content.collapsed {

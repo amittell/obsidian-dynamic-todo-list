@@ -42,10 +42,9 @@ export class TaskView extends ItemView {
             await this.processor.toggleTask(task);
             task.completed = !task.completed;
             
-            // Update UI elements directly
             setIcon(checkbox, task.completed ? 'check-square' : 'square');
             taskTextEl.classList.toggle('task-completed', task.completed);
-            await this.renderTaskList(); // Re-render to move task (and possibly note) to correct section
+            await this.renderTaskList();
             
             checkbox.removeClass('is-disabled');
         } catch (error) {
@@ -60,7 +59,17 @@ export class TaskView extends ItemView {
             const stat = await this.app.vault.adapter.stat(file.path);
             return stat ? new Date(stat.ctime).toLocaleDateString() : '';
         } catch (error) {
-            console.error('Error getting file date:', error);
+            console.error('Error getting file creation date:', error);
+            return '';
+        }
+    }
+
+    private async getFileModifiedDate(file: TFile): Promise<string> {
+        try {
+            const stat = await this.app.vault.adapter.stat(file.path);
+            return stat ? new Date(stat.mtime).toLocaleDateString() : '';
+        } catch (error) {
+            console.error('Error getting file modified date:', error);
             return '';
         }
     }
@@ -73,7 +82,6 @@ export class TaskView extends ItemView {
         if (!this.taskListContainer) return;
         this.taskListContainer.empty();
 
-        // Add \"Open Tasks\" header
         this.taskListContainer.createEl('h2', {
             text: 'Open Tasks',
             cls: 'task-list-header'
@@ -91,7 +99,6 @@ export class TaskView extends ItemView {
         const openSections: [string, { open: Task[], completed: Task[] }][] = [];
         const completedSections: [string, { open: Task[], completed: Task[] }][] = [];
 
-        // Sort notes into open and completed sections
         Object.entries(tasksByFile).forEach(entry => {
             if (this.isNoteCompleted(entry[1])) {
                 completedSections.push(entry);
@@ -100,12 +107,10 @@ export class TaskView extends ItemView {
             }
         });
 
-        // Render open notes
         for (const [path, tasks] of openSections) {
             await this.renderFileSection(path, tasks, this.taskListContainer);
         }
 
-        // Render completed notes section if there are any
         if (completedSections.length > 0) {
             const completedContainer = this.taskListContainer.createDiv({
                 cls: 'completed-notes-section'
@@ -137,7 +142,6 @@ export class TaskView extends ItemView {
                 );
             });
 
-            // Render each completed note
             for (const [path, tasks] of completedSections) {
                 await this.renderFileSection(path, tasks, completedContent);
             }
@@ -163,24 +167,38 @@ export class TaskView extends ItemView {
 
     private async renderFileSection(path: string, tasks: { open: Task[], completed: Task[] }, container: HTMLElement) {
         const fileSection = container.createDiv({ cls: 'task-section' });
-        
-        // Create collapsible header with date
         const header = fileSection.createDiv({ cls: 'task-section-header' });
-        const toggleIcon = header.createDiv({ cls: 'task-section-toggle' });
         
-        const title = header.createEl('h3', {
+        // Title row with toggle and title
+        const titleRow = header.createDiv({ cls: 'task-section-title-row' });
+        const toggleIcon = titleRow.createDiv({ cls: 'task-section-toggle' });
+        titleRow.createEl('h3', {
             cls: 'task-section-title',
-            text: path,
+            text: path
         });
-        
-        const date = await this.getFileCreationDate(tasks.open[0]?.sourceFile || tasks.completed[0]?.sourceFile);
-        if (date) {
-            header.createDiv({
-                cls: 'task-section-date',
-                text: date
-            });
+
+        // Date info section
+        const file = tasks.open[0]?.sourceFile || tasks.completed[0]?.sourceFile;
+        if (file) {
+            const createdDate = await this.getFileCreationDate(file);
+            const modifiedDate = await this.getFileModifiedDate(file);
+            
+            const dateInfo = header.createDiv({ cls: 'task-section-dates' });
+            if (createdDate) {
+                dateInfo.createDiv({
+                    cls: 'task-date-entry',
+                    text: `Created: ${createdDate}`
+                });
+            }
+            
+            if (modifiedDate) {
+                dateInfo.createDiv({
+                    cls: 'task-date-entry',
+                    text: `Last Update: ${modifiedDate}`
+                });
+            }
         }
-        
+
         const isCollapsed = this.collapsedSections.has(path);
         setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
         
@@ -188,7 +206,6 @@ export class TaskView extends ItemView {
             cls: `task-section-content ${isCollapsed ? 'collapsed' : ''}`
         });
 
-        // Toggle collapse on header click
         header.addEventListener('click', () => {
             const isNowCollapsed = !this.collapsedSections.has(path);
             if (isNowCollapsed) {
@@ -200,13 +217,11 @@ export class TaskView extends ItemView {
             setIcon(toggleIcon, isNowCollapsed ? 'chevron-right' : 'chevron-down');
         });
 
-        // Render open tasks
         if (tasks.open.length > 0) {
             const openTasksList = content.createEl('ul', { cls: 'task-list-items' });
             tasks.open.forEach(task => this.renderTaskItem(openTasksList, task));
         }
 
-        // Render completed tasks section if there are any
         if (tasks.completed.length > 0) {
             const completedSection = content.createDiv({ cls: 'completed-tasks-section' });
             const completedHeader = completedSection.createDiv({
