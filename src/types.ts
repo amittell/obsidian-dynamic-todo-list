@@ -1,9 +1,10 @@
-import { TFile } from 'obsidian';
+import { TFile, Hotkey } from 'obsidian';
 
 export interface PluginSettings {
     noteTag: string;
     taskPrefix: string;
     openOnStartup: boolean;
+    hotkey: Hotkey | null;
 }
 
 export interface Task {
@@ -22,5 +23,6 @@ export interface FileMetadata {
 export const DEFAULT_SETTINGS: Readonly<PluginSettings> = {
     noteTag: '#tasks',
     taskPrefix: '- [ ]',
-    openOnStartup: false
+    openOnStartup: false,
+    hotkey: null
 };

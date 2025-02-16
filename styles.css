@@ -1,76 +1,59 @@
-/* Task List Container */
+.hotkey-setting button.capturing-hotkey {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.hotkey-setting .setting-item-control {
+    display: flex;
+    gap: 8px;
+}
+
+.hotkey-setting button:not(.clickable-icon) {
+    min-width: 140px;
+}
+
+/* Make the icons more visible */
+.hotkey-setting .clickable-icon {
+    color: var(--text-muted);
+    opacity: 0.8;
+    transition: all 0.2s ease;
+}
+
+.hotkey-setting .clickable-icon:hover {
+    color: var(--text-normal);
+    opacity: 1;
+}
+
+/* Task list styling */
 .task-list {
-    padding: 10px;
+    padding: 0 8px;
 }
 
 .task-list-header {
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--background-modifier-border);
-    font-weight: bold;
-    font-size: 1.5em;
+    margin-bottom: 16px;
     color: var(--text-normal);
 }
 
-/* Task Sections */
 .task-section {
-    margin-bottom: 20px;
-    border-radius: 5px;
-    background: var(--background-secondary);
+    margin-bottom: 24px;
 }
 
 .task-section-header {
-    padding: 8px;
-    cursor: pointer;
-}
-
-.task-section-header:hover {
-    background-color: var(--background-secondary-alt);
-}
-
-.task-section-title-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 4px;
-    gap: 4px;
-}
-
-.task-section-toggle {
-    width: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
+    margin-bottom: 8px;
 }
 
 .task-section-title {
     margin: 0;
     font-size: 1.1em;
-    flex: 1;
+    color: var(--text-normal);
 }
 
 .task-section-dates {
-    margin-left: 24px;
-    font-size: 0.85em;
+    font-size: 0.8em;
     color: var(--text-muted);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    margin-top: 4px;
 }
 
-.task-date-entry {
-    opacity: 0.8;
-}
-
-.task-section-content {
-    padding: 8px 8px 8px 32px;
-}
-
-.task-section-content.collapsed {
-    display: none;
-}
-
-/* Task Items */
 .task-list-items {
     list-style: none;
     padding: 0;
@@ -79,13 +62,12 @@
 
 .task-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    gap: 8px;
     padding: 4px 0;
-    margin: 2px 0;
 }
 
 .task-checkbox {
-    margin-right: 8px;
     cursor: pointer;
     color: var(--text-muted);
 }
@@ -94,78 +76,120 @@
     color: var(--text-normal);
 }
 
-.task-checkbox.is-disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
+.task-completed {
+    text-decoration: line-through;
+    color: var(--text-muted);
 }
 
-/* Completed Tasks Section */
 .completed-tasks-section {
-    margin-top: 10px;
-    border-top: 1px solid var(--background-modifier-border);
+    margin-top: 16px;
 }
 
 .completed-tasks-header {
     display: flex;
     align-items: center;
-    padding: 8px;
-    cursor: pointer;
+    gap: 4px;
     color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 0;
 }
 
-.completed-tasks-toggle {
-    margin-right: 8px;
-}
-
-.completed-tasks-content {
-    padding: 8px;
+.completed-tasks-header:hover {
+    color: var(--text-normal);
 }
 
 .completed-tasks-content.collapsed {
     display: none;
 }
 
-/* Completed Notes Section */
+/* Empty state styling */
+.task-empty-state {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+}
+
+/* Section toggle styling */
+.task-section-toggle {
+    cursor: pointer;
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+.task-section-title-row {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.task-section-title-row:hover {
+    color: var(--text-normal);
+}
+
+.task-section-content.collapsed {
+    display: none;
+}
+
+/* Settings button style overrides */
+.setting-item-control button:not(.clickable-icon) {
+    font-size: 14px;
+    padding: 4px 8px;
+    height: auto;
+    min-height: 28px;
+    border-radius: 4px;
+    background-color: var(--interactive-normal);
+}
+
+.setting-item-control button:not(.clickable-icon):hover {
+    background-color: var(--interactive-hover);
+}
+
+.setting-item-control button.capturing-hotkey:hover {
+    background-color: var(--interactive-accent);
+}
+
+/* Icon button improvements */
+.clickable-icon {
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.clickable-icon:hover {
+    background-color: var(--interactive-hover);
+}
+
+/* Date formatting */
+.task-date-entry {
+    display: inline-block;
+    margin-right: 12px;
+}
+
+/* Completed notes section */
 .completed-notes-section {
-    margin-top: 30px;
-    padding-top: 20px;
-    border-top: 2px solid var(--background-modifier-border);
+    margin-top: 24px;
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: 16px;
 }
 
 .completed-notes-header {
     display: flex;
     align-items: center;
-    padding: 8px;
-    cursor: pointer;
+    gap: 4px;
     color: var(--text-muted);
-    font-size: 1.2em;
-    margin-bottom: 10px;
+    cursor: pointer;
+    padding: 4px 0;
 }
 
-.completed-notes-toggle {
-    margin-right: 8px;
-}
-
-.completed-notes-content {
-    padding: 8px 0;
+.completed-notes-header:hover {
+    color: var(--text-normal);
 }
 
 .completed-notes-content.collapsed {
     display: none;
 }
 
-.completed-notes-content .task-section {
-    opacity: 0.8;
-}
-
-.task-completed {
-    color: var(--text-muted);
-    text-decoration: line-through;
-}
-
-/* Empty State */
-.task-empty-state {
-    text-align: center;
-    padding: 20px;
-    color: var(--text-muted);
+.completed-notes-toggle {
+    margin-right: 4px;
 }
