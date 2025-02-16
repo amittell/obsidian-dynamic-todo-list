@@ -21,7 +21,8 @@
 
 .task-section-header {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: 4px;
     padding: 8px;
     cursor: pointer;
     background: var(--background-secondary);
@@ -32,21 +33,36 @@
     background-color: var(--background-secondary-alt);
 }
 
-.task-section-toggle {
-    margin-right: 8px;
-    color: var(--text-muted);
+.task-section-title-row {
+    display: flex;
+    align-items: center;
+    position: relative;
 }
 
-.task-section-date {
-    margin-left: auto;
+.task-section-toggle {
+    position: absolute;
+    left: 0;
     color: var(--text-muted);
-    font-size: 0.9em;
 }
 
 .task-section-title {
     margin: 0;
-    flex-grow: 1;
+    padding-left: 24px;
     font-size: 1.1em;
+    flex: 1;
+}
+
+.task-section-dates {
+    padding-left: 24px;
+    font-size: 0.85em;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.task-date-entry {
+    opacity: 0.8;
 }
 
 .task-section-content {
