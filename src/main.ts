@@ -163,7 +163,7 @@ class DynamicTodoListSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Task prefix')
-            .setDesc('The prefix used to identify tasks (e.g., "- [ ]" or "* [ ]")')
+            .setDesc('The prefix used to identify tasks (e.g., \"- [ ]\" or \"* [ ]\")')
             .addText(text => text
                 .setPlaceholder('- [ ]')
                 .setValue(this.plugin.settings.taskPrefix)
@@ -190,7 +190,7 @@ class DynamicTodoListSettingTab extends PluginSettingTab {
                             type: 'setting-hotkeys'
                         }).then(() => {
                             workspace.revealLeaf(leaf);
-                            new Notice('Search for "Dynamic Todo List" to find the hotkey setting', 3000);
+                            new Notice('Search for \"Dynamic Todo List\" to find the hotkey setting', 3000);
                         });
                     }
                 })

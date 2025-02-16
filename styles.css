@@ -1,20 +1,46 @@
+/* Task List Container */
+.task-list {
+    padding: 10px;
+}
+
+.task-list-header {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--background-modifier-border);
+    font-weight: bold;
+    font-size: 1.5em;
+    color: var(--text-normal);
+}
+
+/* Task Sections */
+.task-section {
+    margin-bottom: 20px;
+    border-radius: 5px;
+    border: 1px solid var(--background-modifier-border);
+}
+
 .task-section-header {
-    display: block; /* Changed from flex to block for vertical layout */
+    display: flex;
+    align-items: center;
     padding: 8px;
     cursor: pointer;
     background: var(--background-secondary);
     border-radius: 5px 5px 0 0;
 }
 
-.task-section-title-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 4px;
+.task-section-header:hover {
+    background-color: var(--background-secondary-alt);
 }
 
 .task-section-toggle {
     margin-right: 8px;
     color: var(--text-muted);
+}
+
+.task-section-date {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 0.9em;
 }
 
 .task-section-title {
@@ -23,10 +49,110 @@
     font-size: 1.1em;
 }
 
-.task-section-dates {
-    font-size: 0.8em;
-    color: var(--text-muted);
-    margin-left: 24px; /* Aligns with title text after toggle icon */
+.task-section-content {
+    padding: 10px;
 }
 
-/* Rest of your existing CSS remains the same */
+.task-section-content.collapsed {
+    display: none;
+}
+
+/* Task Items */
+.task-list-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 0;
+    margin: 2px 0;
+}
+
+.task-checkbox {
+    margin-right: 8px;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.task-checkbox:hover {
+    color: var(--text-normal);
+}
+
+.task-checkbox.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Completed Tasks Section */
+.completed-tasks-section {
+    margin-top: 10px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.completed-tasks-header {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.completed-tasks-toggle {
+    margin-right: 8px;
+}
+
+.completed-tasks-content {
+    padding: 8px;
+}
+
+.completed-tasks-content.collapsed {
+    display: none;
+}
+
+/* Completed Notes Section */
+.completed-notes-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid var(--background-modifier-border);
+}
+
+.completed-notes-header {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 1.2em;
+    margin-bottom: 10px;
+}
+
+.completed-notes-toggle {
+    margin-right: 8px;
+}
+
+.completed-notes-content {
+    padding: 8px 0;
+}
+
+.completed-notes-content.collapsed {
+    display: none;
+}
+
+.completed-notes-content .task-section {
+    opacity: 0.8;
+}
+
+.task-completed {
+    color: var(--text-muted);
+    text-decoration: line-through;
+}
+
+/* Empty State */
+.task-empty-state {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+}
