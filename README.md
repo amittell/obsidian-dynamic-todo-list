@@ -69,16 +69,11 @@ Settings > Dynamic Todo List:
 - Node.js and npm installed
 - Basic knowledge of TypeScript and Obsidian API
 
-### Setup
+### Building from Source
 1. Clone the repository
 2. Run `npm install`
 3. Run `npm run build` to compile
 4. Copy built files to your test vault's plugins folder
-
-### Testing
-- Test files are in `test-data/` directory
-- Follow test cases in `TEST_PLAN.md`
-- Run through test scenarios in numerical order
 
 ## Contributing
 
