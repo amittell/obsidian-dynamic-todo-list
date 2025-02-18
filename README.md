@@ -51,7 +51,7 @@ Settings > Dynamic Todo List:
 
 ## Installation
 
-### Community Plugins
+### Community Plugins (NB: Future release - not currently available)
 1. Open Obsidian Settings
 2. Go to Community Plugins and disable Safe Mode
 3. Click Browse and search for "Dynamic Todo List"
