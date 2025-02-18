@@ -95,5 +95,4 @@ Settings > Dynamic Todo List:
 ## Support
 
 - Review [SPEC.md](SPEC.md) for technical details
-- Check [TEST_PLAN.md](TEST_PLAN.md) for testing procedures
 - Submit issues on GitHub with steps to reproduce
