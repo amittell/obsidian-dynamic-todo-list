@@ -25,8 +25,9 @@ export class TaskListModal extends Modal {
     private async handleTaskToggle(task: Task, checkbox: HTMLElement, taskTextEl: HTMLElement) {
         try {
             checkbox.addClass('is-disabled');
-            await this.processor.toggleTask(task);
-            task.completed = !task.completed;
+            const newState = !task.completed;
+            await this.processor.toggleTask(task, newState);
+            task.completed = newState;
             
             // Update UI elements directly without re-rendering
             setIcon(checkbox, task.completed ? 'check-square' : 'square');

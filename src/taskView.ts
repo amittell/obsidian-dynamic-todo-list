@@ -2,13 +2,15 @@ import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile } from 'obsidian';
 import { Task } from './types';
 import { TaskProcessor } from './taskProcessor';
 
-export const TASK_VIEW_TYPE = 'dynamic-todo-list-view';
+export const TASK_VIEW_TYPE = 'dynamic-todo-list';
 
 export class TaskView extends ItemView {
     private tasks: Task[] = [];
     private processor: TaskProcessor;
     private taskListContainer: HTMLElement | null = null;
     private collapsedSections: Set<string> = new Set();
+    private searchInput: HTMLInputElement | null = null;
+    private debounceTimeout: NodeJS.Timeout | null = null;
 
     constructor(leaf: WorkspaceLeaf, tasks: Task[], processor: TaskProcessor) {
         super(leaf);
@@ -26,32 +28,6 @@ export class TaskView extends ItemView {
 
     getIcon(): string {
         return 'checkbox-glyph';
-    }
-
-    async onOpen(): Promise<void> {
-        const { contentEl } = this;
-        contentEl.empty();
-        
-        this.taskListContainer = contentEl.createDiv({ cls: 'task-list' });
-        await this.renderTaskList();
-    }
-
-    private async handleTaskToggle(task: Task, checkbox: HTMLElement, taskTextEl: HTMLElement) {
-        try {
-            checkbox.addClass('is-disabled');
-            await this.processor.toggleTask(task);
-            task.completed = !task.completed;
-            
-            setIcon(checkbox, task.completed ? 'check-square' : 'square');
-            taskTextEl.classList.toggle('task-completed', task.completed);
-            await this.renderTaskList();
-            
-            checkbox.removeClass('is-disabled');
-        } catch (error) {
-            new Notice('Failed to update task. Check console for details.');
-            console.error('Task toggle error:', error);
-            checkbox.removeClass('is-disabled');
-        }
     }
 
     private async getFileCreationDate(file: TFile): Promise<string> {
@@ -74,116 +50,192 @@ export class TaskView extends ItemView {
         }
     }
 
-    private isNoteCompleted(tasks: { open: Task[], completed: Task[] }): boolean {
-        return tasks.open.length === 0 && tasks.completed.length > 0;
+    async onOpen(): Promise<void> {
+        const { contentEl } = this;
+        contentEl.empty();
+
+        // Header section
+        const headerSection = contentEl.createDiv({ cls: 'task-list-header-section' });
+        headerSection.createEl('h2', { text: 'Dynamic Todo List', cls: 'task-list-header' });
+
+        // Search and sort controls
+        const controlsSection = headerSection.createDiv({ cls: 'task-controls' });
+        
+        // Search box with stored value
+        const savedSearch = localStorage.getItem('dynamic-todo-list-search') || '';
+        this.searchInput = controlsSection.createEl('input', {
+            cls: 'task-search',
+            attr: { 
+                type: 'text',
+                placeholder: 'Search tasks or files...',
+                value: savedSearch
+            }
+        });
+
+        this.searchInput.addEventListener('input', () => {
+            if (this.debounceTimeout) {
+                clearTimeout(this.debounceTimeout);
+            }
+            this.debounceTimeout = setTimeout(() => {
+                localStorage.setItem('dynamic-todo-list-search', this.searchInput!.value);
+                this.renderTaskList();
+            }, 200);
+        });
+
+        // Sort dropdown
+        const sortSelect = controlsSection.createEl('select', { cls: 'task-sort' });
+        sortSelect.createEl('option', { text: 'Name (A to Z)', value: 'name-asc' });
+        sortSelect.createEl('option', { text: 'Name (Z to A)', value: 'name-desc' });
+        sortSelect.createEl('option', { text: 'Created (Newest)', value: 'created-desc' });
+        sortSelect.createEl('option', { text: 'Created (Oldest)', value: 'created-asc' });
+        sortSelect.createEl('option', { text: 'Modified (Newest)', value: 'modified-desc' });
+        sortSelect.createEl('option', { text: 'Modified (Oldest)', value: 'modified-asc' });
+
+        // Get saved sort preference
+        const savedSort = localStorage.getItem('dynamic-todo-list-sort') || 
+            `${this.processor.settings.sortPreference.field}-${this.processor.settings.sortPreference.direction}`;
+        sortSelect.value = savedSort;
+        
+        sortSelect.addEventListener('change', () => {
+            const [field, direction] = sortSelect.value.split('-');
+            this.processor.settings.sortPreference = {
+                field: field as 'name' | 'created' | 'lastModified',
+                direction: direction as 'asc' | 'desc'
+            };
+            localStorage.setItem('dynamic-todo-list-sort', sortSelect.value);
+            this.renderTaskList();
+        });
+        
+        this.taskListContainer = contentEl.createDiv({ cls: 'task-list' });
+
+        // Restore previous collapse states
+        this.collapsedSections = new Set(
+            JSON.parse(localStorage.getItem('dynamic-todo-list-collapsed-sections') || '[]')
+        );
+
+        await this.renderTaskList();
+    }
+
+    private filterTasks(): Task[] {
+        if (!this.searchInput?.value) {
+            return this.tasks;
+        }
+        const searchTerm = this.searchInput.value.toLowerCase();
+        return this.tasks.filter(task => 
+            task.taskText.toLowerCase().includes(searchTerm) ||
+            task.sourceFile.path.toLowerCase().includes(searchTerm)
+        );
+    }
+
+    private sortTasks(tasks: Task[], sortBy: string): Task[] {
+        const [field, direction] = sortBy.split('-');
+        const multiplier = direction === 'desc' ? -1 : 1;
+
+        return [...tasks].sort((a, b) => {
+            switch (field) {
+                case 'created':
+                    return (a.sourceFile.stat.ctime - b.sourceFile.stat.ctime) * multiplier;
+                case 'modified':
+                    return (a.sourceFile.stat.mtime - b.sourceFile.stat.mtime) * multiplier;
+                case 'name':
+                default:
+                    return a.sourceFile.basename.localeCompare(b.sourceFile.basename) * multiplier;
+            }
+        });
     }
 
     private async renderTaskList() {
         if (!this.taskListContainer) return;
         this.taskListContainer.empty();
 
-        this.taskListContainer.createEl('h2', {
-            text: 'Open Tasks',
-            cls: 'task-list-header'
-        });
+        // Filter tasks based on search
+        let filteredTasks = this.searchInput?.value 
+            ? this.tasks.filter(task => 
+                task.taskText.toLowerCase().includes(this.searchInput!.value.toLowerCase()) ||
+                task.sourceFile.path.toLowerCase().includes(this.searchInput!.value.toLowerCase())
+              )
+            : this.tasks;
 
-        if (this.tasks.length === 0) {
+        // Sort tasks based on selected sort method
+        const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
+        if (sortSelect) {
+            filteredTasks = this.sortTasks(filteredTasks, sortSelect.value);
+        }
+
+        // Group tasks by file
+        const { activeNotes, completedNotes } = this.groupTasksByFile(filteredTasks);
+
+        if (Object.keys(activeNotes).length === 0 && Object.keys(completedNotes).length === 0) {
             this.taskListContainer.createEl('div', {
                 cls: 'task-empty-state',
-                text: 'No tasks found in tagged notes. Tag a note with #tasks to include its tasks here.'
+                text: this.searchInput?.value 
+                    ? 'No matching tasks found.'
+                    : 'No tasks found. Add tasks to your notes with the configured task prefix.'
             });
             return;
         }
 
-        const tasksByFile = this.groupTasksByFile();
-        const openSections: [string, { open: Task[], completed: Task[] }][] = [];
-        const completedSections: [string, { open: Task[], completed: Task[] }][] = [];
-
-        Object.entries(tasksByFile).forEach(entry => {
-            if (this.isNoteCompleted(entry[1])) {
-                completedSections.push(entry);
-            } else {
-                openSections.push(entry);
-            }
-        });
-
-        for (const [path, tasks] of openSections) {
-            await this.renderFileSection(path, tasks, this.taskListContainer);
-        }
-
-        if (completedSections.length > 0) {
-            const completedContainer = this.taskListContainer.createDiv({
-                cls: 'completed-notes-section'
-            });
-
-            const completedHeader = completedContainer.createDiv({
-                cls: 'completed-notes-header'
-            });
-
-            const completedToggle = completedHeader.createDiv({
-                cls: 'completed-notes-toggle'
-            });
-
-            completedHeader.createEl('span', {
-                text: `Completed Notes (${completedSections.length})`
-            });
-
-            setIcon(completedToggle, 'chevron-right');
-
-            const completedContent = completedContainer.createDiv({
-                cls: 'completed-notes-content collapsed'
-            });
-
-            completedHeader.addEventListener('click', () => {
-                const isNowCollapsed = !completedContent.hasClass('collapsed');
-                completedContent.toggleClass('collapsed', isNowCollapsed);
-                setIcon(completedToggle,
-                    isNowCollapsed ? 'chevron-right' : 'chevron-down'
-                );
-            });
-
-            for (const [path, tasks] of completedSections) {
-                await this.renderFileSection(path, tasks, completedContent);
+        // Create active notes section
+        if (Object.keys(activeNotes).length > 0) {
+            const activeSection = this.taskListContainer.createDiv({ cls: 'active-notes-section' });
+            for (const [path, tasks] of Object.entries(activeNotes)) {
+                await this.renderFileSection(path, tasks, activeSection);
             }
         }
-    }
 
-    private groupTasksByFile(): Record<string, { open: Task[], completed: Task[] }> {
-        return this.tasks.reduce((acc, task) => {
-            const path = task.sourceFile.path;
-            if (!acc[path]) {
-                acc[path] = { open: [], completed: [] };
-            }
+        // Create completed notes section if there are any
+        if (Object.keys(completedNotes).length > 0) {
+            const completedNotesSection = this.taskListContainer.createDiv({ cls: 'completed-notes-section' });
+            const header = completedNotesSection.createDiv({ cls: 'completed-notes-header clickable' });
+            const toggleIcon = header.createDiv({ cls: 'completed-notes-toggle' });
             
-            if (task.completed) {
-                acc[path].completed.push(task);
-            } else {
-                acc[path].open.push(task);
-            }
+            header.createEl('h3', {
+                text: `Completed Notes (${Object.keys(completedNotes).length})`
+            });
             
-            return acc;
-        }, {} as Record<string, { open: Task[], completed: Task[] }>);
+            // Get saved collapse state for completed notes section
+            const isCollapsed = localStorage.getItem('dynamic-todo-list-completed-notes-collapsed') === 'true';
+            const content = completedNotesSection.createDiv({ 
+                cls: `completed-notes-content ${isCollapsed ? 'collapsed' : ''}` 
+            });
+            
+            setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
+            
+            // Add click handler for toggling completed notes section
+            header.addEventListener('click', () => {
+                const willCollapse = !content.hasClass('collapsed');
+                content.toggleClass('collapsed', willCollapse);
+                setIcon(toggleIcon, willCollapse ? 'chevron-right' : 'chevron-down');
+                localStorage.setItem('dynamic-todo-list-completed-notes-collapsed', willCollapse.toString());
+            });
+
+            // Render completed note sections
+            for (const [path, tasks] of Object.entries(completedNotes)) {
+                await this.renderFileSection(path, tasks, content);
+            }
+        }
     }
 
     private async renderFileSection(path: string, tasks: { open: Task[], completed: Task[] }, container: HTMLElement) {
-        const fileSection = container.createDiv({ cls: 'task-section' });
-        const header = fileSection.createDiv({ cls: 'task-section-header' });
+        const section = container.createDiv({ cls: 'task-section' });
+        const header = section.createDiv({ cls: 'task-section-header' });
         
-        // Title row with toggle and title
+        // Title row with toggle and file info
         const titleRow = header.createDiv({ cls: 'task-section-title-row' });
         const toggleIcon = titleRow.createDiv({ cls: 'task-section-toggle' });
+        
+        const file = tasks.open[0]?.sourceFile || tasks.completed[0]?.sourceFile;
         titleRow.createEl('h3', {
             cls: 'task-section-title',
-            text: path
+            text: file?.basename || path // Use basename instead of full path
         });
 
-        // Date info section
-        const file = tasks.open[0]?.sourceFile || tasks.completed[0]?.sourceFile;
+        // Add date information
         if (file) {
+            const dateInfo = header.createDiv({ cls: 'task-section-dates' });
             const createdDate = await this.getFileCreationDate(file);
             const modifiedDate = await this.getFileModifiedDate(file);
-            
-            const dateInfo = header.createDiv({ cls: 'task-section-dates' });
+
             if (createdDate) {
                 dateInfo.createDiv({
                     cls: 'task-date-entry',
@@ -194,90 +246,231 @@ export class TaskView extends ItemView {
             if (modifiedDate) {
                 dateInfo.createDiv({
                     cls: 'task-date-entry',
-                    text: `Last Update: ${modifiedDate}`
+                    text: `Modified: ${modifiedDate}`
                 });
             }
         }
 
+        // Set initial collapse state
         const isCollapsed = this.collapsedSections.has(path);
         setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
         
-        const content = fileSection.createDiv({
+        const content = section.createDiv({ 
             cls: `task-section-content ${isCollapsed ? 'collapsed' : ''}`
         });
 
+        // Render open tasks
+        if (tasks.open.length > 0) {
+            const openTasksList = content.createDiv({ cls: 'open-tasks' });
+            tasks.open.forEach(task => this.renderTaskItem(openTasksList, task));
+        }
+
+        // Render completed tasks if they haven't expired
+        if (tasks.completed.length > 0) {
+            const threshold = this.processor.settings.archiveCompletedOlderThan;
+            const thresholdDate = new Date();
+            thresholdDate.setDate(thresholdDate.getDate() - threshold);
+            
+            const recentCompletedTasks = tasks.completed.filter(task => {
+                if (!task.completionDate) return true;
+                const completedDate = new Date(task.completionDate);
+                return completedDate >= thresholdDate;
+            });
+
+            if (recentCompletedTasks.length > 0) {
+                const completedSection = content.createDiv({ cls: 'completed-tasks-section' });
+                const completedHeader = completedSection.createDiv({
+                    cls: 'completed-tasks-header clickable'
+                });
+                
+                const completedToggle = completedHeader.createDiv({
+                    cls: 'completed-tasks-toggle'
+                });
+                
+                completedHeader.createEl('span', {
+                    text: `Completed Tasks (${recentCompletedTasks.length})`
+                });
+                
+                const completedContent = completedSection.createDiv({
+                    cls: 'completed-tasks-content collapsed'
+                });
+                
+                setIcon(completedToggle, 'chevron-right');
+                
+                recentCompletedTasks.forEach(task => this.renderTaskItem(completedContent, task));
+                
+                completedHeader.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isCollapsed = completedContent.hasClass('collapsed');
+                    completedContent.toggleClass('collapsed', !isCollapsed);
+                    setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
+                });
+            }
+        }
+
+        // Set up section collapse functionality
         header.addEventListener('click', () => {
-            const isNowCollapsed = !this.collapsedSections.has(path);
-            if (isNowCollapsed) {
+            const isCollapsed = !content.hasClass('collapsed');
+            content.toggleClass('collapsed', isCollapsed);
+            setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
+            
+            if (isCollapsed) {
                 this.collapsedSections.add(path);
             } else {
                 this.collapsedSections.delete(path);
             }
-            content.toggleClass('collapsed', isNowCollapsed);
-            setIcon(toggleIcon, isNowCollapsed ? 'chevron-right' : 'chevron-down');
+
+            // Save collapse states
+            localStorage.setItem('dynamic-todo-list-collapsed-sections', 
+                JSON.stringify(Array.from(this.collapsedSections)));
         });
-
-        if (tasks.open.length > 0) {
-            const openTasksList = content.createEl('ul', { cls: 'task-list-items' });
-            tasks.open.forEach(task => this.renderTaskItem(openTasksList, task));
-        }
-
-        if (tasks.completed.length > 0) {
-            const completedSection = content.createDiv({ cls: 'completed-tasks-section' });
-            const completedHeader = completedSection.createDiv({
-                cls: 'completed-tasks-header'
-            });
-            
-            const completedToggle = completedHeader.createDiv({
-                cls: 'completed-tasks-toggle'
-            });
-            
-            completedHeader.createEl('span', {
-                text: `Completed Tasks (${tasks.completed.length})`
-            });
-            
-            const completedContent = completedSection.createDiv({
-                cls: 'completed-tasks-content collapsed'
-            });
-            
-            setIcon(completedToggle, 'chevron-right');
-            
-            const completedList = completedContent.createEl('ul', {
-                cls: 'task-list-items completed'
-            });
-            
-            tasks.completed.forEach(task => 
-                this.renderTaskItem(completedList, task));
-            
-            completedHeader.addEventListener('click', () => {
-                const isNowCollapsed = !completedContent.hasClass('collapsed');
-                completedContent.toggleClass('collapsed', isNowCollapsed);
-                setIcon(completedToggle,
-                    isNowCollapsed ? 'chevron-right' : 'chevron-down'
-                );
-            });
-        }
     }
 
     private renderTaskItem(container: HTMLElement, task: Task) {
-        const li = container.createEl('li', { cls: 'task-item' });
-        const checkbox = li.createEl('div', {
-            cls: 'task-checkbox clickable-icon',
-            attr: {
-                'aria-label': task.completed ?
-                    'Mark task incomplete' : 'Mark task complete'
-            }
-        });
+        const taskEl = container.createDiv({ cls: 'task-item' });
         
+        const checkbox = taskEl.createDiv({ cls: 'task-checkbox clickable-icon' });
         setIcon(checkbox, task.completed ? 'check-square' : 'square');
         
-        const taskText = li.createEl('span', {
+        const taskText = taskEl.createEl('span', {
             text: task.taskText,
-            cls: task.completed ? 'task-completed' : ''
+            cls: `task-text ${task.completed ? 'task-completed' : ''} clickable`
         });
 
-        checkbox.addEventListener('click', () =>
-            this.handleTaskToggle(task, checkbox, taskText));
+        // Add click handler for task navigation
+        taskText.addEventListener('click', async () => {
+            await this.processor.navigateToTask(task);
+        });
+        
+        // Add click handler for checkbox
+        checkbox.addEventListener('click', async () => {
+            try {
+                checkbox.addClass('is-disabled');
+                const newState = !task.completed;
+                await this.processor.toggleTask(task, newState);
+                task.completed = newState;
+                
+                setIcon(checkbox, task.completed ? 'check-square' : 'square');
+                taskText.toggleClass('task-completed', task.completed);
+                
+                // Don't re-render the entire list, just update this task's position
+                const taskSection = taskEl.closest('.task-section') as HTMLElement | null;
+                if (taskSection) {
+                    await this.updateTaskSectionAfterToggle(taskSection, task);
+                }
+                
+                checkbox.removeClass('is-disabled');
+            } catch (error) {
+                new Notice('Failed to update task');
+                console.error('Task toggle error:', error);
+                checkbox.removeClass('is-disabled');
+            }
+        });
+    }
+
+    private async updateTaskSectionAfterToggle(section: HTMLElement, task: Task): Promise<void> {
+        const path = task.sourceFile.path;
+        const groupedTasks = this.groupTasksByFile();
+        const tasks = groupedTasks.activeNotes[path] || groupedTasks.completedNotes[path];
+        
+        if (!tasks) return;
+
+        // Update task lists
+        tasks.open = this.tasks.filter(t => 
+            t.sourceFile.path === path && !t.completed
+        );
+        tasks.completed = this.tasks.filter(t => 
+            t.sourceFile.path === path && t.completed
+        );
+
+        // If all tasks are completed, we should re-render the whole list
+        if (tasks.open.length === 0 && tasks.completed.length > 0) {
+            this.renderTaskList();
+            return;
+        }
+
+        // Handle completed tasks section
+        if (tasks.completed.length > 0) {
+            let completedSection = section.querySelector('.completed-tasks-section') as HTMLElement;
+            let completedContent = section.querySelector('.completed-tasks-content') as HTMLElement;
+            
+            if (!completedSection) {
+                completedSection = createDiv({ cls: 'completed-tasks-section' });
+                const completedHeader = completedSection.createDiv({
+                    cls: 'completed-tasks-header clickable'
+                });
+                
+                const completedToggle = completedHeader.createDiv({
+                    cls: 'completed-tasks-toggle'
+                });
+                
+                completedHeader.createEl('span', {
+                    text: `Completed Tasks (${tasks.completed.length})`
+                });
+                
+                completedContent = completedSection.createDiv({
+                    cls: 'completed-tasks-content'
+                });
+                
+                setIcon(completedToggle, 'chevron-right');
+                
+                completedHeader.addEventListener('click', () => {
+                    if (completedContent) {
+                        const isCollapsed = completedContent.classList.contains('collapsed');
+                        completedContent.classList.toggle('collapsed', !isCollapsed);
+                        setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
+                    }
+                });
+
+                section.appendChild(completedSection);
+            } else {
+                // Update the completed tasks counter
+                const counter = completedSection.querySelector('span');
+                if (counter) {
+                    counter.textContent = `Completed Tasks (${tasks.completed.length})`;
+                }
+            }
+
+            // Add the completed tasks to the content section
+            if (completedContent) {
+                completedContent.empty();
+                tasks.completed.forEach((completedTask: Task) => this.renderTaskItem(completedContent, completedTask));
+            }
+        }
+    }
+
+    private groupTasksByFile(tasks: Task[] = this.tasks): { 
+        activeNotes: Record<string, { open: Task[], completed: Task[] }>,
+        completedNotes: Record<string, { open: Task[], completed: Task[] }>
+    } {
+        const groups: Record<string, { open: Task[], completed: Task[] }> = {};
+        
+        // First, group all tasks by file
+        tasks.forEach(task => {
+            const path = task.sourceFile.path;
+            if (!groups[path]) {
+                groups[path] = { open: [], completed: [] };
+            }
+            if (task.completed) {
+                groups[path].completed.push(task);
+            } else {
+                groups[path].open.push(task);
+            }
+        });
+
+        // Then separate into active and completed notes
+        const activeNotes: Record<string, { open: Task[], completed: Task[] }> = {};
+        const completedNotes: Record<string, { open: Task[], completed: Task[] }> = {};
+
+        Object.entries(groups).forEach(([path, tasks]) => {
+            if (tasks.open.length === 0 && tasks.completed.length > 0) {
+                completedNotes[path] = tasks;
+            } else {
+                activeNotes[path] = tasks;
+            }
+        });
+
+        return { activeNotes, completedNotes };
     }
 
     updateTasks(newTasks: Task[]) {
