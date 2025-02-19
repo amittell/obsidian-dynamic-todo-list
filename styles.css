@@ -27,6 +27,8 @@
 /* Task List Header */
 .task-list-header-section {
     margin-bottom: 20px;
+    position: relative;
+    z-index: 1001;
 }
 
 .task-list-header {
@@ -40,6 +42,8 @@
 
 /* Controls Section */
 .task-controls {
+    position: relative;
+    z-index: 1001;
     display: flex;
     gap: 12px;
     margin: 16px 12px;
@@ -64,7 +68,9 @@
 
 /* Task List Container */
 .task-list {
+    position: relative;
     padding: 0 12px;
+    min-height: 200px;
 }
 
 /* Task Section */
@@ -231,7 +237,9 @@
 
 /* Task list styling */
 .task-list {
+    position: relative;
     padding: 0 8px;
+    min-height: 100px;
 }
 
 .task-list-header {
@@ -397,4 +405,82 @@
 
 .completed-notes-toggle {
     margin-right: 4px;
+}
+
+/* Loading State */
+.task-list {
+    position: relative;
+    padding: 0 12px;
+    min-height: 200px;
+}
+
+.task-list-loading {
+    position: absolute;
+    inset: 0;
+    background: var(--background-primary);
+    opacity: 0.92;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.task-list-loading.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.task-list-loading-inner {
+    background: var(--background-secondary);
+    padding: 24px 32px;
+    border-radius: 8px;
+    box-shadow: var(--shadow-s);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    min-width: 240px;
+    transform: translateY(0);
+    transition: transform 0.3s ease;
+}
+
+.task-list-loading.hidden .task-list-loading-inner {
+    transform: translateY(10px);
+}
+
+.task-list-loading-spinner {
+    width: 28px;
+    height: 28px;
+    border: 2.5px solid var(--background-modifier-border);
+    border-top-color: var(--interactive-accent);
+    border-radius: 50%;
+    animation: loading-spin 0.8s linear infinite;
+}
+
+.task-list-loading-progress {
+    width: 180px;
+    height: 3px;
+    background: var(--background-modifier-border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.task-list-loading-progress-inner {
+    height: 100%;
+    background: var(--interactive-accent);
+    width: 0;
+    transition: width 0.2s ease;
+}
+
+.task-list-loading-text {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+@keyframes loading-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }

@@ -11,11 +11,19 @@ export class TaskView extends ItemView {
     private collapsedSections: Set<string> = new Set();
     private searchInput: HTMLInputElement | null = null;
     private debounceTimeout: NodeJS.Timeout | null = null;
+    private loadingEl: HTMLElement | null = null;
+    private isLoading = true;
+
+    getIsLoading(): boolean {
+        return this.isLoading;
+    }
 
     constructor(leaf: WorkspaceLeaf, tasks: Task[], processor: TaskProcessor) {
         super(leaf);
         this.tasks = tasks;
         this.processor = processor;
+        // If we're created with tasks, we can start in non-loading state
+        this.isLoading = tasks.length === 0;
     }
 
     getViewType(): string {
@@ -54,13 +62,44 @@ export class TaskView extends ItemView {
         const { contentEl } = this;
         contentEl.empty();
 
-        // Header section
+        // Create all UI elements first
         const headerSection = contentEl.createDiv({ cls: 'task-list-header-section' });
         headerSection.createEl('h2', { text: 'Dynamic Todo List', cls: 'task-list-header' });
-
-        // Search and sort controls
         const controlsSection = headerSection.createDiv({ cls: 'task-controls' });
+        this.taskListContainer = contentEl.createDiv({ cls: 'task-list' });
         
+        // Create loading overlay
+        this.loadingEl = contentEl.createDiv({ cls: 'task-list-loading' });
+        const loadingInner = this.loadingEl.createDiv({ cls: 'task-list-loading-inner' });
+        loadingInner.createDiv({ cls: 'task-list-loading-spinner' });
+        const progressBar = loadingInner.createDiv({ cls: 'task-list-loading-progress' });
+        progressBar.createDiv({ 
+            cls: 'task-list-loading-progress-inner',
+            attr: { style: 'width: 0%' }
+        });
+        loadingInner.createDiv({
+            cls: 'task-list-loading-text',
+            text: 'Loading tasks... 0%'
+        });
+
+        // Set up controls
+        await this.setupSearchAndSort(controlsSection);
+
+        // Restore collapse states
+        this.collapsedSections = new Set(
+            JSON.parse(localStorage.getItem('dynamic-todo-list-collapsed-sections') || '[]')
+        );
+
+        // Set initial loading state
+        this.setLoading(this.isLoading);
+
+        // If we already have tasks, render them
+        if (this.tasks.length > 0) {
+            this.renderTaskList();
+        }
+    }
+
+    private async setupSearchAndSort(controlsSection: HTMLElement): Promise<void> {
         // Search box with stored value
         const savedSearch = localStorage.getItem('dynamic-todo-list-search') || '';
         this.searchInput = controlsSection.createEl('input', {
@@ -105,15 +144,40 @@ export class TaskView extends ItemView {
             localStorage.setItem('dynamic-todo-list-sort', sortSelect.value);
             this.renderTaskList();
         });
+    }
+
+    setLoading(loading: boolean): void {
+        this.isLoading = loading;
+        if (!this.loadingEl) return;
+
+        if (!loading) {
+            // Ensure 100% is shown briefly before hiding
+            this.updateLoadingProgress(100);
+            setTimeout(() => {
+                if (this.loadingEl) {
+                    this.loadingEl.addClass('hidden');
+                }
+            }, 300);
+        } else {
+            this.loadingEl.removeClass('hidden');
+        }
         
-        this.taskListContainer = contentEl.createDiv({ cls: 'task-list' });
+        // Ensure tasks are rendered when loading completes
+        if (!loading) {
+            this.renderTaskList();
+        }
+    }
 
-        // Restore previous collapse states
-        this.collapsedSections = new Set(
-            JSON.parse(localStorage.getItem('dynamic-todo-list-collapsed-sections') || '[]')
-        );
-
-        await this.renderTaskList();
+    updateLoadingProgress(percent: number): void {
+        if (!this.loadingEl) return;
+        
+        const progressInner = this.loadingEl.querySelector('.task-list-loading-progress-inner') as HTMLElement;
+        const progressText = this.loadingEl.querySelector('.task-list-loading-text') as HTMLElement;
+        
+        if (progressInner && progressText) {
+            progressInner.style.width = `${percent}%`;
+            progressText.textContent = `Loading tasks... ${Math.round(percent)}%`;
+        }
     }
 
     private filterTasks(): Task[] {
@@ -473,8 +537,10 @@ export class TaskView extends ItemView {
         return { activeNotes, completedNotes };
     }
 
-    updateTasks(newTasks: Task[]) {
+    updateTasks(newTasks: Task[]): void {
         this.tasks = newTasks;
-        this.renderTaskList();
+        if (!this.isLoading) {
+            this.renderTaskList();
+        }
     }
 }

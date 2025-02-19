@@ -21,19 +21,20 @@ export class TaskProcessor {
                 filePath.startsWith(path));
 
             if (!shouldExclude && shouldInclude) {
-                const content = await this.vault.read(file);
+                // Use cachedRead for better performance
+                const content = await this.vault.cachedRead(file);
                 const tasks: Task[] = [];
 
-                // Check identification method
-                if (this.settings.taskIdentificationMethod === 'tag') {
-                    if (!content.includes(this.settings.noteTag)) {
-                        return [];
-                    }
-                } else if (this.settings.taskIdentificationMethod === 'header') {
-                    const lines = content.split('\n');
+                // Quick check for task identifiers before full processing
+                if (this.settings.taskIdentificationMethod === 'tag' && !content.includes(this.settings.noteTag)) {
+                    return [];
+                }
+
+                const lines = content.split('\n');
+                if (this.settings.taskIdentificationMethod === 'header') {
                     let hasTaskHeader = false;
-                    for (const line of lines) {
-                        if (line.startsWith('#') && line.toLowerCase().includes('task')) {
+                    for (let i = 0; i < Math.min(20, lines.length); i++) {
+                        if (lines[i].startsWith('#') && lines[i].toLowerCase().includes('task')) {
                             hasTaskHeader = true;
                             break;
                         }
@@ -43,7 +44,7 @@ export class TaskProcessor {
                     }
                 }
 
-                const lines = content.split('\n');
+                // Process all lines at once since we've already filtered the file
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i];
                     if (this.isTaskLine(line)) {
