@@ -70,7 +70,7 @@ export default class DynamicTodoList extends Plugin {
         this.addSettingTab(new DynamicTodoListSettingTab(this.app, this));
     }
 
-    private debouncedIndex = debounce(() => this.indexTasks(false), 2000, true);
+    private debouncedIndex = debounce(() => this.indexTasks(false), 300, true);
 
     private async activateView(): Promise<WorkspaceLeaf | null> {
         const { workspace } = this.app;
