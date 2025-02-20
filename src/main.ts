@@ -1,4 +1,4 @@
-import { Plugin, App, WorkspaceLeaf, Notice } from 'obsidian';
+import { Plugin, App, WorkspaceLeaf, Notice, TFile } from 'obsidian';
 import { TaskView, TASK_VIEW_TYPE } from './taskView';
 import { TaskProcessor } from './taskProcessor';
 import { DynamicTodoListSettingTab } from './settingsTab';
@@ -54,10 +54,48 @@ export default class DynamicTodoList extends Plugin {
             hotkeys: [{ modifiers: ['Mod'], key: 'j' }]
         });
 
-        // Set up file watchers
+        // Set up file watchers with more granular handling
         this.registerEvent(
-            this.app.vault.on('modify', () => {
-                this.debouncedIndex();
+            this.app.vault.on('modify', async (file) => {
+                // Only process markdown files
+                if (!('extension' in file) || file.extension !== 'md') return;
+                
+                // Skip processing if the file change was triggered by our own task toggle
+                const skipFullProcess = this.tasks.some(t => 
+                    t.sourceFile.path === file.path && 
+                    Date.now() - t.lastUpdated < 500
+                );
+                
+                if (skipFullProcess) return;
+
+                // Check if this file is in our task list
+                const existingTasks = this.tasks.filter(t => t.sourceFile.path === file.path);
+                if (existingTasks.length > 0) {
+                    // Process file changes in background without blocking
+                    setTimeout(() => {
+                        this.processor.processFile(file as TFile).then(updatedTasks => {
+                            if (updatedTasks.length > 0) {
+                                // Remove old tasks for this file and add new ones
+                                this.tasks = [
+                                    ...this.tasks.filter(t => t.sourceFile.path !== file.path),
+                                    ...updatedTasks
+                                ].map(task => ({
+                                    ...task,
+                                    completed: Boolean(task.completed)  // Ensure completed is boolean
+                                }));
+                                
+                                if (this.view && !this.view.getIsLoading()) {
+                                    this.view.updateTasks(this.tasks);
+                                }
+                            }
+                        }).catch(error => {
+                            console.error('Error processing file changes:', error);
+                        });
+                    }, 100);
+                } else {
+                    // If this is a new file that might contain tasks, do a full index
+                    this.debouncedIndex();
+                }
             })
         );
 
@@ -70,7 +108,7 @@ export default class DynamicTodoList extends Plugin {
         this.addSettingTab(new DynamicTodoListSettingTab(this.app, this));
     }
 
-    private debouncedIndex = debounce(() => this.indexTasks(false), 2000, true);
+    private debouncedIndex = debounce(() => this.indexTasks(false), 100, true);
 
     private async activateView(): Promise<WorkspaceLeaf | null> {
         const { workspace } = this.app;

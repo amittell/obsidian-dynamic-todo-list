@@ -212,15 +212,8 @@ export class TaskView extends ItemView {
         if (!this.taskListContainer) return;
         this.taskListContainer.empty();
 
-        // Filter tasks based on search
-        let filteredTasks = this.searchInput?.value 
-            ? this.tasks.filter(task => 
-                task.taskText.toLowerCase().includes(this.searchInput!.value.toLowerCase()) ||
-                task.sourceFile.path.toLowerCase().includes(this.searchInput!.value.toLowerCase())
-              )
-            : this.tasks;
-
-        // Sort tasks based on selected sort method
+        // Filter and sort tasks
+        let filteredTasks = this.filterTasks();
         const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
         if (sortSelect) {
             filteredTasks = this.sortTasks(filteredTasks, sortSelect.value);
@@ -291,7 +284,7 @@ export class TaskView extends ItemView {
         const file = tasks.open[0]?.sourceFile || tasks.completed[0]?.sourceFile;
         titleRow.createEl('h3', {
             cls: 'task-section-title',
-            text: file?.basename || path // Use basename instead of full path
+            text: file?.basename || path
         });
 
         // Add date information
@@ -323,53 +316,52 @@ export class TaskView extends ItemView {
             cls: `task-section-content ${isCollapsed ? 'collapsed' : ''}`
         });
 
-        // Render open tasks
+        // Render open tasks first
         if (tasks.open.length > 0) {
             const openTasksList = content.createDiv({ cls: 'open-tasks' });
-            tasks.open.forEach(task => this.renderTaskItem(openTasksList, task));
+            tasks.open.forEach(task => this.renderTaskItem(openTasksList as HTMLElement, task));
         }
 
-        // Render completed tasks if they haven't expired
-        if (tasks.completed.length > 0) {
-            const threshold = this.processor.settings.archiveCompletedOlderThan;
-            const thresholdDate = new Date();
-            thresholdDate.setDate(thresholdDate.getDate() - threshold);
-            
-            const recentCompletedTasks = tasks.completed.filter(task => {
-                if (!task.completionDate) return true;
-                const completedDate = new Date(task.completionDate);
-                return completedDate >= thresholdDate;
-            });
+        // Filter completed tasks that haven't expired
+        const threshold = this.processor.settings.archiveCompletedOlderThan;
+        const thresholdDate = new Date();
+        thresholdDate.setDate(thresholdDate.getDate() - threshold);
+        
+        const recentCompletedTasks = tasks.completed.filter(task => {
+            if (!task.completionDate) return true;
+            const completedDate = new Date(task.completionDate);
+            return completedDate >= thresholdDate;
+        });
 
-            if (recentCompletedTasks.length > 0) {
-                const completedSection = content.createDiv({ cls: 'completed-tasks-section' });
-                const completedHeader = completedSection.createDiv({
-                    cls: 'completed-tasks-header clickable'
-                });
-                
-                const completedToggle = completedHeader.createDiv({
-                    cls: 'completed-tasks-toggle'
-                });
-                
-                completedHeader.createEl('span', {
-                    text: `Completed Tasks (${recentCompletedTasks.length})`
-                });
-                
-                const completedContent = completedSection.createDiv({
-                    cls: 'completed-tasks-content collapsed'
-                });
-                
-                setIcon(completedToggle, 'chevron-right');
-                
-                recentCompletedTasks.forEach(task => this.renderTaskItem(completedContent, task));
-                
-                completedHeader.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const isCollapsed = completedContent.hasClass('collapsed');
-                    completedContent.toggleClass('collapsed', !isCollapsed);
-                    setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
-                });
-            }
+        // Create completed tasks section if there are any recent ones
+        if (recentCompletedTasks.length > 0) {
+            const completedSection = content.createDiv({ cls: 'completed-tasks-section' });
+            const completedHeader = completedSection.createDiv({
+                cls: 'completed-tasks-header clickable'
+            });
+            
+            const completedToggle = completedHeader.createDiv({
+                cls: 'completed-tasks-toggle'
+            });
+            
+            completedHeader.createEl('span', {
+                text: `Completed Tasks (${recentCompletedTasks.length})`
+            });
+            
+            const completedContent = completedSection.createDiv({
+                cls: 'completed-tasks-content collapsed'
+            });
+            
+            setIcon(completedToggle, 'chevron-right');
+            
+            recentCompletedTasks.forEach(task => this.renderTaskItem(completedContent as HTMLElement, task));
+            
+            completedHeader.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isCollapsed = completedContent.hasClass('collapsed');
+                completedContent.toggleClass('collapsed', !isCollapsed);
+                setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
+            });
         }
 
         // Set up section collapse functionality
@@ -411,19 +403,29 @@ export class TaskView extends ItemView {
             try {
                 checkbox.addClass('is-disabled');
                 const newState = !task.completed;
-                await this.processor.toggleTask(task, newState);
-                task.completed = newState;
                 
+                // Update UI immediately
+                task.completed = newState;
                 setIcon(checkbox, task.completed ? 'check-square' : 'square');
                 taskText.toggleClass('task-completed', task.completed);
                 
-                // Don't re-render the entire list, just update this task's position
-                const taskSection = taskEl.closest('.task-section') as HTMLElement | null;
+                // Update task section in background
+                const taskSection = taskEl.closest('.task-section') as HTMLElement;
                 if (taskSection) {
                     await this.updateTaskSectionAfterToggle(taskSection, task);
                 }
                 
-                checkbox.removeClass('is-disabled');
+                // Process the actual file change in background
+                this.processor.toggleTask(task, newState).catch(error => {
+                    // Revert UI if file operation fails
+                    task.completed = !newState;
+                    setIcon(checkbox, task.completed ? 'check-square' : 'square');
+                    taskText.toggleClass('task-completed', task.completed);
+                    new Notice('Failed to update task');
+                    console.error('Task toggle error:', error);
+                }).finally(() => {
+                    checkbox.removeClass('is-disabled');
+                });
             } catch (error) {
                 new Notice('Failed to update task');
                 console.error('Task toggle error:', error);
@@ -434,27 +436,40 @@ export class TaskView extends ItemView {
 
     private async updateTaskSectionAfterToggle(section: HTMLElement, task: Task): Promise<void> {
         const path = task.sourceFile.path;
-        const groupedTasks = this.groupTasksByFile();
-        const tasks = groupedTasks.activeNotes[path] || groupedTasks.completedNotes[path];
         
-        if (!tasks) return;
+        // Get updated tasks for this file only
+        const fileTasks = this.tasks.filter(t => t.sourceFile.path === path);
+        const openTasks = fileTasks.filter(t => !t.completed);
+        const completedTasks = fileTasks.filter(t => t.completed);
 
-        // Update task lists
-        tasks.open = this.tasks.filter(t => 
-            t.sourceFile.path === path && !t.completed
-        );
-        tasks.completed = this.tasks.filter(t => 
-            t.sourceFile.path === path && t.completed
-        );
-
-        // If all tasks are completed, we should re-render the whole list
-        if (tasks.open.length === 0 && tasks.completed.length > 0) {
+        // If all tasks are completed and we're in the active notes section,
+        // trigger a full re-render to move the file to completed notes
+        if (openTasks.length === 0 && completedTasks.length > 0 && 
+            section.closest('.active-notes-section')) {
             this.renderTaskList();
             return;
         }
 
+        // Update open tasks section if it exists
+        const openTasksList = section.querySelector('.open-tasks') as HTMLElement;
+        if (openTasksList) {
+            openTasksList.empty();
+            openTasks.forEach(task => this.renderTaskItem(openTasksList, task));
+        }
+
+        // Filter completed tasks by age
+        const threshold = this.processor.settings.archiveCompletedOlderThan;
+        const thresholdDate = new Date();
+        thresholdDate.setDate(thresholdDate.getDate() - threshold);
+        
+        const recentCompletedTasks = completedTasks.filter(task => {
+            if (!task.completionDate) return true;
+            const completedDate = new Date(task.completionDate);
+            return completedDate >= thresholdDate;
+        });
+
         // Handle completed tasks section
-        if (tasks.completed.length > 0) {
+        if (recentCompletedTasks.length > 0) {
             let completedSection = section.querySelector('.completed-tasks-section') as HTMLElement;
             let completedContent = section.querySelector('.completed-tasks-content') as HTMLElement;
             
@@ -469,21 +484,20 @@ export class TaskView extends ItemView {
                 });
                 
                 completedHeader.createEl('span', {
-                    text: `Completed Tasks (${tasks.completed.length})`
+                    text: `Completed Tasks (${recentCompletedTasks.length})`
                 });
                 
                 completedContent = completedSection.createDiv({
-                    cls: 'completed-tasks-content'
+                    cls: 'completed-tasks-content collapsed'
                 });
                 
                 setIcon(completedToggle, 'chevron-right');
                 
-                completedHeader.addEventListener('click', () => {
-                    if (completedContent) {
-                        const isCollapsed = completedContent.classList.contains('collapsed');
-                        completedContent.classList.toggle('collapsed', !isCollapsed);
-                        setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
-                    }
+                completedHeader.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isCollapsed = completedContent.hasClass('collapsed');
+                    completedContent.toggleClass('collapsed', !isCollapsed);
+                    setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
                 });
 
                 section.appendChild(completedSection);
@@ -491,14 +505,20 @@ export class TaskView extends ItemView {
                 // Update the completed tasks counter
                 const counter = completedSection.querySelector('span');
                 if (counter) {
-                    counter.textContent = `Completed Tasks (${tasks.completed.length})`;
+                    counter.textContent = `Completed Tasks (${recentCompletedTasks.length})`;
                 }
             }
 
-            // Add the completed tasks to the content section
+            // Clear and re-render completed tasks
             if (completedContent) {
                 completedContent.empty();
-                tasks.completed.forEach((completedTask: Task) => this.renderTaskItem(completedContent, completedTask));
+                recentCompletedTasks.forEach(task => this.renderTaskItem(completedContent, task));
+            }
+        } else {
+            // Remove completed section if no completed tasks
+            const completedSection = section.querySelector('.completed-tasks-section');
+            if (completedSection) {
+                completedSection.remove();
             }
         }
     }
@@ -515,6 +535,7 @@ export class TaskView extends ItemView {
             if (!groups[path]) {
                 groups[path] = { open: [], completed: [] };
             }
+            // Make sure each task only goes to one list
             if (task.completed) {
                 groups[path].completed.push(task);
             } else {
@@ -538,7 +559,13 @@ export class TaskView extends ItemView {
     }
 
     updateTasks(newTasks: Task[]): void {
-        this.tasks = newTasks;
+        // Ensure each task is properly categorized
+        this.tasks = newTasks.map(task => ({
+            ...task,
+            // Ensure completed status is a boolean
+            completed: Boolean(task.completed)
+        }));
+        
         if (!this.isLoading) {
             this.renderTaskList();
         }
