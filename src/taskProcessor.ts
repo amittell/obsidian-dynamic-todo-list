@@ -1,113 +1,187 @@
-import { TFile, Vault } from 'obsidian';
+import { TFile, Vault, App } from 'obsidian';
 import { Task, PluginSettings } from './types';
 
 export class TaskProcessor {
-    constructor(
-        private vault: Vault,
-        private settings: PluginSettings
-    ) {}
+    private vault: Vault;
+    private app: App | null = null;
+    settings: PluginSettings;
+
+    constructor(vault: Vault, settings: PluginSettings) {
+        this.vault = vault;
+        this.settings = settings;
+    }
 
     async processFile(file: TFile): Promise<Task[]> {
         try {
-            const content = await this.vault.read(file);
-            
-            // Check if the note is tagged for task collection
-            if (!content.includes(this.settings.noteTag)) {
-                return [];
-            }
+            // Check folder filters first
+            const filePath = file.path;
+            const shouldInclude = this.settings.folderFilters.include.length === 0 || 
+                this.settings.folderFilters.include.some(path => filePath.startsWith(path));
+            const shouldExclude = this.settings.folderFilters.exclude.some(path => 
+                filePath.startsWith(path));
 
-            return this.extractTasksFromContent(content, file);
+            if (!shouldExclude && shouldInclude) {
+                // Use cachedRead for better performance
+                const content = await this.vault.cachedRead(file);
+                const tasks: Task[] = [];
+
+                // Quick check for task identifiers before full processing
+                if (this.settings.taskIdentificationMethod === 'tag' && !content.includes(this.settings.noteTag)) {
+                    return [];
+                }
+
+                const lines = content.split('\n');
+                if (this.settings.taskIdentificationMethod === 'header') {
+                    let hasTaskHeader = false;
+                    for (let i = 0; i < Math.min(20, lines.length); i++) {
+                        if (lines[i].startsWith('#') && lines[i].toLowerCase().includes('task')) {
+                            hasTaskHeader = true;
+                            break;
+                        }
+                    }
+                    if (!hasTaskHeader) {
+                        return [];
+                    }
+                }
+
+                // Process all lines at once since we've already filtered the file
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (this.isTaskLine(line)) {
+                        const task = await this.createTask(file, line, i);
+                        if (task) {
+                            tasks.push(task);
+                        }
+                    }
+                }
+
+                return tasks;
+            }
+            return [];
         } catch (error) {
             console.error(`Error processing file ${file.path}:`, error);
             return [];
         }
     }
 
-    private extractTasksFromContent(content: string, file: TFile): Task[] {
-        const tasks: Task[] = [];
-        const lines = content.split('\n');
-
-        lines.forEach((line, index) => {
-            if (this.isCheckboxTaskLine(line)) {
-                tasks.push(this.createTask(file, line, index));
-            }
-        });
-
-        return tasks;
-    }
-
-    private isCheckboxTaskLine(line: string): boolean {
+    private isTaskLine(line: string): boolean {
         const trimmedLine = line.trim();
-        const uncheckedPrefix = this.settings.taskPrefix;
-        const checkedPrefix = uncheckedPrefix.replace('[ ]', '[x]');
-        return trimmedLine.startsWith(uncheckedPrefix) || trimmedLine.startsWith(checkedPrefix);
+        return trimmedLine.startsWith(this.settings.taskPrefix) || 
+               trimmedLine.startsWith(this.settings.taskPrefix.replace('[ ]', '[x]')) ||
+               trimmedLine.startsWith(this.settings.taskPrefix.replace('[ ]', '[X]'));
     }
 
-    private createTask(file: TFile, line: string, lineNumber: number): Task {
-        const uncheckedPrefix = this.settings.taskPrefix;
-        const checkedPrefix = uncheckedPrefix.replace('[ ]', '[x]');
-        const completed = line.includes(checkedPrefix);
-        
-        return {
-            sourceFile: file,
-            taskText: this.extractTaskText(line, completed ? checkedPrefix : uncheckedPrefix),
-            lineNumber,
-            completed,
-            completionDate: this.extractCompletionDate(line)
-        };
+    private async createTask(file: TFile, line: string, lineNumber: number): Promise<Task | null> {
+        try {
+            // Extract task text and handle completion date
+            const isChecked = line.includes('[x]') || line.includes('[X]');
+            let taskText = line.trim();
+            
+            // Remove the task prefix (both checked and unchecked variants)
+            if (isChecked) {
+                taskText = taskText.replace(this.settings.taskPrefix.replace('[ ]', '[x]'), '');
+                taskText = taskText.replace(this.settings.taskPrefix.replace('[ ]', '[X]'), '');
+            } else {
+                taskText = taskText.replace(this.settings.taskPrefix, '');
+            }
+            
+            taskText = taskText.trim();
+
+            // Handle completion date
+            const dateMatch = taskText.match(/✅ \d{4}-\d{2}-\d{2}$/);
+            let completionDate = null;
+
+            if (dateMatch) {
+                completionDate = dateMatch[0].substring(2); // Remove the ✅
+                taskText = taskText.replace(/✅ \d{4}-\d{2}-\d{2}$/, '').trim();
+            }
+
+            return {
+                sourceFile: file,
+                taskText,
+                lineNumber,
+                completed: isChecked,
+                completionDate,
+                sourceLink: this.createTaskLink(file, lineNumber)
+            };
+        } catch (error) {
+            console.error('Error creating task:', error);
+            return null;
+        }
     }
 
-    private extractTaskText(line: string, prefix: string): string {
-        // Remove the prefix first
-        let text = line.replace(prefix, '').trim();
-        
-        // Remove completion emoji and date if present
-        // Matches pattern: ✅ YYYY-MM-DD at the end of the string
-        return text.replace(/\s*✅\s*\d{4}-\d{2}-\d{2}$/, '');
+    private createTaskLink(file: TFile, lineNumber: number): string {
+        const vault = this.vault.getName();
+        const filePath = file.path;
+        return `obsidian://open?vault=${encodeURIComponent(vault)}&file=${encodeURIComponent(filePath)}&line=${lineNumber}`;
     }
 
-    private extractCompletionDate(line: string): string | null {
-        const match = line.match(/✅\s*(\d{4}-\d{2}-\d{2})$/);
-        return match ? match[1] : null;
-    }
-
-    private formatCompletionDate(): string {
-        const date = new Date();
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `✅ ${year}-${month}-${day}`;
-    }
-
-    async toggleTask(task: Task): Promise<void> {
+    async toggleTask(task: Task, newState: boolean): Promise<void> {
         try {
             const content = await this.vault.read(task.sourceFile);
             const lines = content.split('\n');
-            const taskLine = lines[task.lineNumber];
-            
-            const uncheckedPrefix = this.settings.taskPrefix;
-            const checkedPrefix = uncheckedPrefix.replace('[ ]', '[x]');
-            
-            let newLine: string;
-            
-            if (task.completed) {
-                // Task is being unchecked - remove completion emoji and date
-                newLine = taskLine
-                    .replace(checkedPrefix, uncheckedPrefix)
-                    .replace(/\s*✅\s*\d{4}-\d{2}-\d{2}$/, '');
+            let line = lines[task.lineNumber];
+
+            // Handle completion date
+            const dateMatch = line.match(/✅ \d{4}-\d{2}-\d{2}$/);
+            const today = new Date().toISOString().split('T')[0];
+
+            if (newState) {
+                // Adding completion
+                line = line.replace(/\[ \]/, '[x]');
+                if (!dateMatch) {
+                    line = `${line} ✅ ${today}`;
+                }
+                task.completionDate = dateMatch ? dateMatch[0].substring(2) : today;
             } else {
-                // Task is being checked - add completion emoji and date
-                newLine = taskLine
-                    .replace(uncheckedPrefix, checkedPrefix)
-                    .replace(/\s*✅\s*\d{4}-\d{2}-\d{2}$/, '') // Remove any existing completion date
-                    + ' ' + this.formatCompletionDate();
+                // Removing completion
+                line = line
+                    .replace(/\[[xX]\]/, '[ ]')
+                    .replace(/✅ \d{4}-\d{2}-\d{2}$/, '')
+                    .trim();
+                task.completionDate = null;
             }
-            
-            lines[task.lineNumber] = newLine;
+
+            lines[task.lineNumber] = line;
+            task.completed = newState;
             await this.vault.modify(task.sourceFile, lines.join('\n'));
         } catch (error) {
             console.error('Error toggling task:', error);
             throw error;
         }
+    }
+
+    async navigateToTask(task: Task): Promise<void> {
+        if (!this.app) {
+            throw new Error('App not initialized');
+        }
+
+        try {
+            // Find the most recent leaf that's not our task list
+            let targetLeaf = this.app.workspace.getLeaf('tab');
+
+            await targetLeaf.openFile(task.sourceFile);
+
+            // Focus and scroll to the task line
+            const view = targetLeaf.view;
+            if (view.getViewType() === 'markdown') {
+                const editor = (view as any).editor;
+                if (editor) {
+                    const pos = { line: task.lineNumber, ch: 0 };
+                    editor.setCursor(pos);
+                    editor.scrollIntoView({ from: pos, to: pos }, true);
+                }
+            }
+
+            // Focus the leaf
+            this.app.workspace.setActiveLeaf(targetLeaf);
+        } catch (error) {
+            console.error('Error navigating to task:', error);
+            throw error;
+        }
+    }
+
+    setApp(app: App): void {
+        this.app = app;
     }
 }
