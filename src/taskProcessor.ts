@@ -11,7 +11,7 @@ export class TaskProcessor {
         this.settings = settings;
     }
 
-    async processFile(file: TFile): Promise<Task[]> {
+    async processFile(file: TFile, specificLineNumber?: number): Promise<Task[]> {
         try {
             // Check folder filters first
             const filePath = file.path;
@@ -24,6 +24,19 @@ export class TaskProcessor {
                 // Use cachedRead for better performance
                 const content = await this.vault.cachedRead(file);
                 const tasks: Task[] = [];
+
+                // If we're checking a specific line, we can skip other checks
+                if (specificLineNumber !== undefined) {
+                    const lines = content.split('\n');
+                    const line = lines[specificLineNumber];
+                    if (this.isTaskLine(line)) {
+                        const task = await this.createTask(file, line, specificLineNumber);
+                        if (task) {
+                            tasks.push(task);
+                        }
+                    }
+                    return tasks;
+                }
 
                 // Quick check for task identifiers before full processing
                 if (this.settings.taskIdentificationMethod === 'tag' && !content.includes(this.settings.noteTag)) {
@@ -102,7 +115,8 @@ export class TaskProcessor {
                 lineNumber,
                 completed: isChecked,
                 completionDate,
-                sourceLink: this.createTaskLink(file, lineNumber)
+                sourceLink: this.createTaskLink(file, lineNumber),
+                lastUpdated: Date.now()
             };
         } catch (error) {
             console.error('Error creating task:', error);
@@ -118,33 +132,34 @@ export class TaskProcessor {
 
     async toggleTask(task: Task, newState: boolean): Promise<void> {
         try {
-            const content = await this.vault.read(task.sourceFile);
+            // Use cachedRead for better performance
+            const content = await this.vault.cachedRead(task.sourceFile);
             const lines = content.split('\n');
             let line = lines[task.lineNumber];
-
-            // Handle completion date
+            
+            // Prepare the new line content
             const dateMatch = line.match(/✅ \d{4}-\d{2}-\d{2}$/);
             const today = new Date().toISOString().split('T')[0];
-
+            
             if (newState) {
-                // Adding completion
-                line = line.replace(/\[ \]/, '[x]');
-                if (!dateMatch) {
-                    line = `${line} ✅ ${today}`;
-                }
+                // Adding completion - optimize string operations
+                line = line.replace(/\[ \]/, '[x]') + (!dateMatch ? ` ✅ ${today}` : '');
                 task.completionDate = dateMatch ? dateMatch[0].substring(2) : today;
             } else {
-                // Removing completion
-                line = line
-                    .replace(/\[[xX]\]/, '[ ]')
-                    .replace(/✅ \d{4}-\d{2}-\d{2}$/, '')
-                    .trim();
+                // Removing completion - optimize string operations
+                line = line.replace(/\[[xX]\]/, '[ ]').replace(/✅ \d{4}-\d{2}-\d{2}$/, '').trim();
                 task.completionDate = null;
             }
-
+            
             lines[task.lineNumber] = line;
             task.completed = newState;
-            await this.vault.modify(task.sourceFile, lines.join('\n'));
+            task.lastUpdated = Date.now();
+            
+            // Modify file in background
+            this.vault.modify(task.sourceFile, lines.join('\n')).catch(error => {
+                console.error('Error modifying file:', error);
+                throw error;
+            });
         } catch (error) {
             console.error('Error toggling task:', error);
             throw error;
