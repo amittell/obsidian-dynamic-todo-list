@@ -27,7 +27,7 @@ export default class DynamicTodoList extends Plugin {
 
         // Add UI elements first
         this.addRibbonIcon('checkbox-glyph', 'Dynamic Todo List', async () => {
-            await this.activateView();
+            await this.toggleView();
         });
 
         // Register view early
@@ -44,12 +44,12 @@ export default class DynamicTodoList extends Plugin {
             await this.activateView();
         }
 
-        // Add command
+        // Add command with toggle functionality
         this.addCommand({
             id: 'show-dynamic-task-list',
-            name: 'Show Task List',
+            name: 'Toggle Task List',
             callback: async () => {
-                await this.activateView();
+                await this.toggleView();
             },
             hotkeys: [{ modifiers: ['Mod'], key: 'j' }]
         });
@@ -141,6 +141,37 @@ export default class DynamicTodoList extends Plugin {
         }
 
         return leaf;
+    }
+
+    private async toggleView(): Promise<void> {
+        const { workspace } = this.app;
+        const existing = workspace.getLeavesOfType(TASK_VIEW_TYPE);
+
+        if (existing.length > 0) {
+            const leaf = existing[0];
+            
+            // Remember which side the leaf was on
+            const isInRightSidebar = leaf.getRoot() === workspace.rightSplit;
+            
+            // Detach our view
+            leaf.detach();
+            
+            // If we were in the right sidebar and there are no other leaves, collapse it
+            if (isInRightSidebar && workspace.rightSplit) {
+                const rightLeaves = workspace.getLeavesOfType('');
+                const hasVisibleSidebarLeaves = rightLeaves.some(l => 
+                    l !== leaf && 
+                    l.getRoot() === workspace.rightSplit
+                );
+                
+                if (!hasVisibleSidebarLeaves) {
+                    workspace.rightSplit.collapse();
+                }
+            }
+        } else {
+            // Open the view if it's closed
+            await this.activateView();
+        }
     }
 
     async indexTasks(isInitialLoad = false): Promise<void> {
