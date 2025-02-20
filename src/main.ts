@@ -20,6 +20,11 @@ export default class DynamicTodoList extends Plugin {
         this.processor = new TaskProcessor(this.app.vault, this.settings);
         this.processor.setApp(this.app);
 
+        // Start indexing tasks immediately
+        this.app.workspace.onLayoutReady(() => {
+            this.indexTasks(true);
+        });
+
         // Add UI elements first
         this.addRibbonIcon('checkbox-glyph', 'Dynamic Todo List', async () => {
             await this.activateView();
@@ -34,12 +39,9 @@ export default class DynamicTodoList extends Plugin {
             }
         );
 
-        // Activate view if configured and start loading tasks
+        // Activate view if configured
         if (this.settings.openOnStartup) {
-            const leaf = await this.activateView();
-            if (leaf) {
-                await this.indexTasks(true);
-            }
+            await this.activateView();
         }
 
         // Add command
