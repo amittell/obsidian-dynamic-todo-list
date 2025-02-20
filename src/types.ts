@@ -25,6 +25,7 @@ export interface Task {
     completed: boolean;
     completionDate: string | null;
     sourceLink: string; // Used for task navigation
+    lastUpdated: number;
 }
 
 export interface FileMetadata {
