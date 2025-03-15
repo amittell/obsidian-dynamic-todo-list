@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile } from 'obsidian';
+import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile, MarkdownRenderer, MarkdownView, Component, parseLinktext, MarkdownPostProcessorContext } from 'obsidian';
 import { Task } from './types';
 import { TaskProcessor } from './taskProcessor';
 
@@ -13,6 +13,7 @@ export class TaskView extends ItemView {
     private debounceTimeout: NodeJS.Timeout | null = null;
     private loadingEl: HTMLElement | null = null;
     private isLoading = true;
+    private markdownComponents: Component[] = [];
 
     getIsLoading(): boolean {
         return this.isLoading;
@@ -209,6 +210,10 @@ export class TaskView extends ItemView {
     }
 
     private async renderTaskList() {
+        // Clean up existing components
+        this.markdownComponents.forEach(component => component.unload());
+        this.markdownComponents = [];
+
         if (!this.taskListContainer) return;
         this.taskListContainer.empty();
 
@@ -388,18 +393,102 @@ export class TaskView extends ItemView {
         const checkbox = taskEl.createDiv({ cls: 'task-checkbox clickable-icon' });
         setIcon(checkbox, task.completed ? 'check-square' : 'square');
         
-        const taskText = taskEl.createEl('span', {
-            text: task.taskText,
-            cls: `task-text ${task.completed ? 'task-completed' : ''} clickable`
+        const taskTextContainer = taskEl.createDiv({
+            cls: `task-text ${task.completed ? 'task-completed' : ''}`
+        });
+        const taskClickWrapper = taskTextContainer.createDiv({ cls: 'task-click-wrapper' });
+
+        // Create component for proper cleanup
+        const component = new Component();
+        this.markdownComponents.push(component);
+
+        // Render markdown with Obsidian's renderer
+        MarkdownRenderer.renderMarkdown(
+            task.taskText,
+            taskClickWrapper,
+            task.sourceFile.path,
+            component
+        ).then(() => {
+            // Process links after rendering
+            taskClickWrapper.findAll('.internal-link').forEach(link => {
+                if (!this.processor.settings.enableWikiLinks) {
+                    link.addClass('disabled-link');
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.handleTaskClick(task);
+                    });
+                } else {
+                    // Handle wiki-link navigation
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const linkText = link.getAttribute('data-href') || link.textContent;
+                        if (!linkText) return;
+
+                        // Parse the link text to get the target file
+                        const { path } = parseLinktext(linkText);
+                        if (!path) return;
+
+                        // Try to find and open the target file
+                        const targetFile = this.app.metadataCache.getFirstLinkpathDest(path, task.sourceFile.path);
+                        if (targetFile) {
+                            this.app.workspace.openLinkText(
+                                linkText,
+                                task.sourceFile.path,
+                                false, // Don't create new files
+                                { active: true } // Make the opened note active
+                            ).catch(() => {
+                                new Notice('Failed to open linked note');
+                            });
+                        } else {
+                            new Notice('Linked note not found');
+                        }
+                    });
+                }
+            });
+
+            if (!this.processor.settings.enableUrlLinks) {
+                taskClickWrapper.findAll('a:not(.internal-link)').forEach(link => {
+                    link.addClass('disabled-link');
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.handleTaskClick(task);
+                    });
+                });
+            }
+
+            // Handle clicks on non-link elements
+            taskClickWrapper.addEventListener('click', (e) => {
+                const target = e.target as HTMLElement;
+                const isUrlLink = target.matches('a:not(.internal-link)') ||
+                                target.closest('a:not(.internal-link)');
+                const isWikiLink = target.matches('.internal-link') ||
+                                target.closest('.internal-link');
+                
+                // Don't interfere with enabled links
+                if ((isUrlLink && this.processor.settings.enableUrlLinks) ||
+                    (isWikiLink && this.processor.settings.enableWikiLinks)) {
+                    return;
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleTaskClick(task);
+            });
         });
 
-        // Add click handler for task navigation
-        taskText.addEventListener('click', async () => {
-            await this.processor.navigateToTask(task);
-        });
-        
-        // Add click handler for checkbox
-        checkbox.addEventListener('click', async () => {
+        // Add checkbox handler with debounce
+        let isProcessing = false;
+        checkbox.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (isProcessing) return;
+            isProcessing = true;
+            
             try {
                 checkbox.addClass('is-disabled');
                 const newState = !task.completed;
@@ -407,31 +496,58 @@ export class TaskView extends ItemView {
                 // Update UI immediately
                 task.completed = newState;
                 setIcon(checkbox, task.completed ? 'check-square' : 'square');
-                taskText.toggleClass('task-completed', task.completed);
+                taskTextContainer.toggleClass('task-completed', task.completed);
                 
-                // Update task section in background
                 const taskSection = taskEl.closest('.task-section') as HTMLElement;
                 if (taskSection) {
                     await this.updateTaskSectionAfterToggle(taskSection, task);
                 }
                 
-                // Process the actual file change in background
-                this.processor.toggleTask(task, newState).catch(error => {
-                    // Revert UI if file operation fails
-                    task.completed = !newState;
-                    setIcon(checkbox, task.completed ? 'check-square' : 'square');
-                    taskText.toggleClass('task-completed', task.completed);
-                    new Notice('Failed to update task');
-                    console.error('Task toggle error:', error);
-                }).finally(() => {
-                    checkbox.removeClass('is-disabled');
-                });
+                // Process file change
+                await this.processor.toggleTask(task, newState);
             } catch (error) {
+                // Revert UI state on error
+                task.completed = !task.completed;
+                setIcon(checkbox, task.completed ? 'check-square' : 'square');
+                taskTextContainer.toggleClass('task-completed', task.completed);
                 new Notice('Failed to update task');
                 console.error('Task toggle error:', error);
+            } finally {
                 checkbox.removeClass('is-disabled');
+                isProcessing = false;
             }
         });
+    }
+
+    private async handleTaskClick(task: Task): Promise<void> {
+        // First look for an existing leaf with this file
+        const leaves = this.app.workspace.getLeavesOfType('markdown');
+        const existingLeaf = leaves.find(leaf => {
+            if (leaf.view instanceof MarkdownView) {
+                return leaf.view.file?.path === task.sourceFile.path;
+            }
+            return false;
+        });
+
+        if (existingLeaf) {
+            // Activate and focus the existing leaf
+            await this.app.workspace.setActiveLeaf(existingLeaf);
+            const view = existingLeaf.view as MarkdownView;
+            
+            // Ensure the editor is focused and cursor is set
+            if (view.editor) {
+                view.editor.focus();
+                view.editor.setCursor(task.lineNumber);
+                // Scroll the line into view
+                view.editor.scrollIntoView(
+                    { from: { line: task.lineNumber, ch: 0 }, to: { line: task.lineNumber, ch: 0 } },
+                    true
+                );
+            }
+        } else {
+            // Let the processor handle opening in a new leaf
+            await this.processor.navigateToTask(task);
+        }
     }
 
     private async updateTaskSectionAfterToggle(section: HTMLElement, task: Task): Promise<void> {
