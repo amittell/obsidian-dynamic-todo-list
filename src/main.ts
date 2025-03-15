@@ -5,6 +5,11 @@ import { DynamicTodoListSettingTab } from './settingsTab';
 import { Task, PluginSettings, DEFAULT_SETTINGS } from './types';
 import { debounce } from '../src/utils'; // Using explicit relative path
 
+/**
+ * Main plugin class for the Dynamic Todo List plugin.
+ * This plugin extends Obsidian's Plugin class and provides functionality
+ * for dynamically aggregating and managing tasks from notes.
+ */
 export default class DynamicTodoList extends Plugin {
     settings: PluginSettings;
     private tasks: Task[] = [];
@@ -13,65 +18,70 @@ export default class DynamicTodoList extends Plugin {
     private reindexingInProgress = false;
     private initialLoadComplete = false;
 
+    /**
+     * Called when the plugin is loaded.
+     * Initializes settings, task processor, UI elements, and event handlers.
+     * @override
+     */
     override async onload(): Promise<void> {
         await this.loadSettings();
-        
+
         // Initialize processor with app context for navigation
         this.processor = new TaskProcessor(this.app.vault, this.settings);
         this.processor.setApp(this.app);
 
-        // Start indexing tasks immediately
+        // Start indexing tasks immediately once the layout is ready
         this.app.workspace.onLayoutReady(() => {
             this.indexTasks(true);
         });
 
-        // Add UI elements first
+        // Add UI elements - ribbon icon for toggling the view
         this.addRibbonIcon('checkbox-glyph', 'Dynamic Todo List', async () => {
             await this.toggleView();
         });
 
-        // Register view early
+        // Register the view
         this.registerView(
             TASK_VIEW_TYPE,
             (leaf: WorkspaceLeaf) => {
-                this.view = new TaskView(leaf, [], this.processor);
+                this.view = new TaskView(leaf, [], this.processor); // Initialize with empty tasks array
                 return this.view;
             }
         );
 
-        // Activate view if configured
+        // Activate view if configured in settings
         if (this.settings.openOnStartup) {
             await this.activateView();
         }
 
-        // Add command with toggle functionality
+        // Add command to toggle the view, with a hotkey
         this.addCommand({
             id: 'show-dynamic-task-list',
             name: 'Toggle Task List',
             callback: async () => {
                 await this.toggleView();
             },
-            hotkeys: [{ modifiers: ['Mod'], key: 'j' }]
+            hotkeys: [{ modifiers: ['Mod'], key: 'j' }] // Mod is Ctrl on Windows/Linux, Cmd on Mac
         });
 
-        // Set up file watchers with more granular handling
+        // Set up file watchers to re-index tasks on file modification and deletion
         this.registerEvent(
             this.app.vault.on('modify', async (file) => {
                 // Only process markdown files
                 if (!('extension' in file) || file.extension !== 'md') return;
-                
-                // Skip processing if the file change was triggered by our own task toggle
-                const skipFullProcess = this.tasks.some(t => 
-                    t.sourceFile.path === file.path && 
-                    Date.now() - t.lastUpdated < 500
+
+                // Skip processing if the file change was triggered by our own task toggle (within a short time window)
+                const skipFullProcess = this.tasks.some(t =>
+                    t.sourceFile.path === file.path &&
+                    Date.now() - t.lastUpdated < 500 // 500ms threshold
                 );
-                
+
                 if (skipFullProcess) return;
 
                 // Check if this file is in our task list
                 const existingTasks = this.tasks.filter(t => t.sourceFile.path === file.path);
                 if (existingTasks.length > 0) {
-                    // Process file changes in background without blocking
+                    // Process file changes in background without blocking the main thread
                     setTimeout(() => {
                         this.processor.processFile(file as TFile).then(updatedTasks => {
                             if (updatedTasks.length > 0) {
@@ -83,7 +93,8 @@ export default class DynamicTodoList extends Plugin {
                                     ...task,
                                     completed: Boolean(task.completed)  // Ensure completed is boolean
                                 }));
-                                
+
+                                // Update the view if it's open and not currently loading
                                 if (this.view && !this.view.getIsLoading()) {
                                     this.view.updateTasks(this.tasks);
                                 }
@@ -91,9 +102,9 @@ export default class DynamicTodoList extends Plugin {
                         }).catch(error => {
                             console.error('Error processing file changes:', error);
                         });
-                    }, 100);
+                    }, 100); // Short delay for responsiveness
                 } else {
-                    // If this is a new file that might contain tasks, do a full index
+                    // If this is a new file that might contain tasks, do a full index (debounced)
                     this.debouncedIndex();
                 }
             })
@@ -101,15 +112,23 @@ export default class DynamicTodoList extends Plugin {
 
         this.registerEvent(
             this.app.vault.on('delete', () => {
-                this.indexTasks(false);
+                this.indexTasks(false); // Re-index on file deletion
             })
         );
 
+        // Add settings tab
         this.addSettingTab(new DynamicTodoListSettingTab(this.app, this));
     }
 
+    // Debounced version of indexTasks, using the utility function.  The trailing 'true' causes it to run immediately the first time.
     private debouncedIndex = debounce(() => this.indexTasks(false), 100, true);
 
+    /**
+     * Activates the task view in the right sidebar.
+     * If a view of the same type already exists, it reveals that leaf.
+     * Otherwise, it creates a new leaf.
+     * @returns The created or existing leaf, or null if a new leaf couldn't be created.
+     */
     private async activateView(): Promise<WorkspaceLeaf | null> {
         const { workspace } = this.app;
 
@@ -119,14 +138,14 @@ export default class DynamicTodoList extends Plugin {
         const existing = workspace.getLeavesOfType(TASK_VIEW_TYPE);
         if (existing.length > 0) {
             leaf = existing[0];
-            workspace.revealLeaf(leaf);
+            workspace.revealLeaf(leaf); // Bring existing view to front
         } else {
-            // Create new leaf
+            // Create new leaf in the right sidebar
             leaf = workspace.getRightLeaf(false);
-            if (!leaf) return null;
-            
-            await leaf.setViewState({ type: TASK_VIEW_TYPE });
-            workspace.revealLeaf(leaf);
+            if (!leaf) return null; // No right leaf available
+
+            await leaf.setViewState({ type: TASK_VIEW_TYPE }); // Set the view type
+            workspace.revealLeaf(leaf); // Reveal the new leaf
         }
 
         // Wait for view to be ready and initialize if needed
@@ -134,38 +153,44 @@ export default class DynamicTodoList extends Plugin {
             // Update tasks if we already have them
             if (this.tasks.length > 0) {
                 leaf.view.updateTasks(this.tasks);
-                leaf.view.setLoading(false);
+                leaf.view.setLoading(false); // We have tasks, so we're not loading
             } else {
-                leaf.view.setLoading(true);
+                leaf.view.setLoading(true); // No tasks yet, show loading indicator
             }
         }
 
         return leaf;
     }
 
+    /**
+     * Toggles the task view. If the view is open, it closes it.
+     * If the view is closed, it opens it.  If closing, and it's
+     * in the right sidebar, and there are no other leaves, collapse
+     * the sidebar.
+     */
     private async toggleView(): Promise<void> {
         const { workspace } = this.app;
         const existing = workspace.getLeavesOfType(TASK_VIEW_TYPE);
 
         if (existing.length > 0) {
             const leaf = existing[0];
-            
+
             // Remember which side the leaf was on
             const isInRightSidebar = leaf.getRoot() === workspace.rightSplit;
-            
-            // Detach our view
+
+            // Detach our view (close it)
             leaf.detach();
-            
+
             // If we were in the right sidebar and there are no other leaves, collapse it
             if (isInRightSidebar && workspace.rightSplit) {
                 const rightLeaves = workspace.getLeavesOfType('');
-                const hasVisibleSidebarLeaves = rightLeaves.some(l => 
-                    l !== leaf && 
-                    l.getRoot() === workspace.rightSplit
+                const hasVisibleSidebarLeaves = rightLeaves.some(l =>
+                    l !== leaf && // Exclude our own leaf
+                    l.getRoot() === workspace.rightSplit // Check if it's in the right sidebar
                 );
-                
+
                 if (!hasVisibleSidebarLeaves) {
-                    workspace.rightSplit.collapse();
+                    workspace.rightSplit.collapse(); // Collapse the right sidebar
                 }
             }
         } else {
@@ -174,53 +199,73 @@ export default class DynamicTodoList extends Plugin {
         }
     }
 
+    /**
+     * Indexes all tasks in the vault, updating the task list.
+     * @param isInitialLoad - True if this is the initial indexing on plugin load, false otherwise.
+     */
     async indexTasks(isInitialLoad = false): Promise<void> {
-        if (this.reindexingInProgress) return;
-        
+        if (this.reindexingInProgress) return; // Prevent concurrent indexing
+
         try {
             this.reindexingInProgress = true;
-            const files = this.app.vault.getMarkdownFiles();
-            
+            const files = this.app.vault.getMarkdownFiles(); // Get all markdown files
+
             if (isInitialLoad && this.view) {
-                this.view.setLoading(true);
-                this.view.updateLoadingProgress(0);
+                this.view.setLoading(true); // Show loading indicator
+                this.view.updateLoadingProgress(0); // Initialize progress
             }
 
             const newTasks: Task[] = [];
             const totalFiles = files.length;
 
+            // Loop through all markdown files
             for (let i = 0; i < files.length; i++) {
-                const tasks = await this.processor.processFile(files[i]);
-                newTasks.push(...tasks);
+                const tasks = await this.processor.processFile(files[i]); // Process each file
+                newTasks.push(...tasks); // Add the tasks to the list
 
                 if (this.view) {
-                    const progress = Math.round((i + 1) / totalFiles * 100);
-                    this.view.updateLoadingProgress(progress);
+                    const progress = Math.round((i + 1) / totalFiles * 100); // Calculate progress
+                    this.view.updateLoadingProgress(progress);  // Update loading progress
                 }
             }
 
-            this.tasks = newTasks;
+            this.tasks = newTasks; // Update the task list
             this.initialLoadComplete = true;
 
             if (this.view) {
-                this.view.updateTasks(this.tasks);
-                this.view.setLoading(false);
+                this.view.updateTasks(this.tasks); // Update the view with the new tasks
+                this.view.setLoading(false); // Hide loading indicator
             }
         } catch (error) {
             console.error('Error indexing tasks:', error);
-            new Notice('Error updating tasks');
+            new Notice('Error updating tasks'); // Display error message to the user
             if (this.view) {
-                this.view.setLoading(false);
+                this.view.setLoading(false); // Ensure loading indicator is hidden on error
             }
         } finally {
-            this.reindexingInProgress = false;
+            this.reindexingInProgress = false; // Allow reindexing after completion or error
         }
     }
 
+    /**
+     * Refreshes the task view if it's not currently loading.
+     */
+    async refreshTaskView(): Promise<void> {
+        if (this.view && !this.view.getIsLoading()) {
+            this.view.updateTasks(this.tasks);
+        }
+    }
+
+    /**
+     * Loads the plugin settings from storage.
+     */
     async loadSettings(): Promise<void> {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     }
 
+    /**
+     * Saves the plugin settings to storage.
+     */
     async saveSettings(): Promise<void> {
         await this.saveData(this.settings);
         // Re-initialize the processor with new settings
@@ -232,6 +277,9 @@ export default class DynamicTodoList extends Plugin {
         }
     }
 
+    /**
+     * Called when the plugin is unloaded.  Handles cleanup.
+     */
     async onunload() {
         // Save current state before unloading
         await this.saveData(this.settings);

@@ -149,10 +149,63 @@
     padding: 2px 6px;
     border-radius: 4px;
     transition: background-color 0.15s ease;
+    min-width: 0; /* Allows proper line wrapping in flex container */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
+    position: relative;
 }
 
 .task-text:hover {
     background-color: var(--background-modifier-hover);
+}
+
+.task-text p {
+    margin: 0;
+    display: inline;
+}
+
+.task-text a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.task-text a:hover {
+    text-decoration: underline;
+}
+
+/* Style wiki-links to match Obsidian's default styling */
+.task-text .internal-link {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.task-text .internal-link:hover {
+    text-decoration: underline;
+}
+
+/* Ensure links are properly interactive */
+.task-text .internal-link:not(.disabled-link) {
+    color: var(--link-color);
+    text-decoration: none;
+    cursor: pointer;
+    z-index: 3;
+    position: relative;
+}
+
+.task-text .internal-link:not(.disabled-link):hover {
+    text-decoration: underline;
+}
+
+/* Remove pointer-events from disabled links */
+.task-text .internal-link.disabled-link {
+    pointer-events: none;
+}
+
+/* Preserve URL link behavior */
+.task-text a:not(.internal-link):not(.disabled-link) {
+    z-index: 3;
+    position: relative;
 }
 
 /* Completed Tasks Section */
@@ -278,11 +331,14 @@
     align-items: flex-start;
     gap: 8px;
     padding: 4px 0;
+    border-radius: 4px;
 }
 
 .task-checkbox {
     cursor: pointer;
     color: var(--text-muted);
+    flex-shrink: 0;
+    margin-top: 2px;
 }
 
 .task-checkbox:hover {
@@ -483,4 +539,75 @@
     to {
         transform: rotate(360deg);
     }
+}
+
+.task-click-wrapper {
+    flex: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
+    min-width: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
+}
+
+/* Only show pointer cursor on the wrapper when not hovering over a link */
+.task-click-wrapper:not(:has(a:hover)) {
+    cursor: pointer;
+}
+
+.task-text {
+    position: relative;
+}
+
+/* Preserve Obsidian's native link handling */
+.task-text .internal-link:not(.disabled-link) {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.task-text .internal-link:not(.disabled-link):hover {
+    text-decoration: underline;
+}
+
+/* Disabled link styling */
+.task-text .internal-link.disabled-link {
+    color: inherit;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+/* Ensure proper link layering */
+.task-text a:not(.disabled-link) {
+    position: relative;
+    z-index: 2;
+}
+
+/* Ensure proper link interaction when wiki-links are enabled */
+.wiki-links-enabled .internal-link {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.task-text a.disabled-link {
+    color: inherit;
+    cursor: pointer;
+    text-decoration: none;
+    pointer-events: none;
+}
+
+.task-text a.disabled-link:hover {
+    color: var(--text-accent);
+}
+
+/* Add specific hover styles for wiki-links */
+.wiki-links-enabled .internal-link {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.wiki-links-enabled .internal-link:hover {
+    text-decoration: underline;
+    cursor: pointer;
 }
