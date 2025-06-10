@@ -1,12 +1,14 @@
 import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile, MarkdownRenderer, MarkdownView, Component, parseLinktext, MarkdownPostProcessorContext } from 'obsidian';
 import { Task } from './types';
 import { TaskProcessor } from './taskProcessor';
+import DynamicTodoList from './main';
 
 export const TASK_VIEW_TYPE = 'dynamic-todo-list';
 
 export class TaskView extends ItemView {
     private tasks: Task[] = [];
     private processor: TaskProcessor;
+    private plugin: DynamicTodoList;
     private taskListContainer: HTMLElement | null = null;
     private collapsedSections: Set<string> = new Set();
     private searchInput: HTMLInputElement | null = null;
@@ -14,15 +16,19 @@ export class TaskView extends ItemView {
     private loadingEl: HTMLElement | null = null;
     private isLoading = true;
     private markdownComponents: Component[] = [];
+    private hideCompleted = false;
+    private hideCompletedLabel: HTMLLabelElement | null = null;
+    private hideCompletedCheckbox: HTMLInputElement | null = null;
 
     getIsLoading(): boolean {
         return this.isLoading;
     }
 
-    constructor(leaf: WorkspaceLeaf, tasks: Task[], processor: TaskProcessor) {
+    constructor(leaf: WorkspaceLeaf, tasks: Task[], processor: TaskProcessor, plugin: DynamicTodoList) {
         super(leaf);
         this.tasks = tasks;
         this.processor = processor;
+        this.plugin = plugin;
         // If we're created with tasks, we can start in non-loading state
         this.isLoading = tasks.length === 0;
     }
@@ -63,7 +69,13 @@ export class TaskView extends ItemView {
         const { contentEl } = this;
         contentEl.empty();
 
-        // Create all UI elements first
+        // Restore states FIRST before creating UI elements
+        this.collapsedSections = new Set(
+            JSON.parse(localStorage.getItem('dynamic-todo-list-collapsed-sections') || '[]')
+        );
+        this.hideCompleted = localStorage.getItem('dynamic-todo-list-hide-completed') === 'true';
+
+        // Create all UI elements
         const headerSection = contentEl.createDiv({ cls: 'task-list-header-section' });
         headerSection.createEl('h2', { text: 'Dynamic Todo List', cls: 'task-list-header' });
         const controlsSection = headerSection.createDiv({ cls: 'task-controls' });
@@ -83,13 +95,8 @@ export class TaskView extends ItemView {
             text: 'Loading tasks... 0%'
         });
 
-        // Set up controls
+        // Set up controls (now with the correct state already restored)
         await this.setupSearchAndSort(controlsSection);
-
-        // Restore collapse states
-        this.collapsedSections = new Set(
-            JSON.parse(localStorage.getItem('dynamic-todo-list-collapsed-sections') || '[]')
-        );
 
         // Set initial loading state
         this.setLoading(this.isLoading);
@@ -101,9 +108,12 @@ export class TaskView extends ItemView {
     }
 
     private async setupSearchAndSort(controlsSection: HTMLElement): Promise<void> {
+        // Create a container for the first row (search and sort)
+        const firstRow = controlsSection.createDiv({ cls: 'task-controls-row' });
+        
         // Search box with stored value
         const savedSearch = localStorage.getItem('dynamic-todo-list-search') || '';
-        this.searchInput = controlsSection.createEl('input', {
+        this.searchInput = firstRow.createEl('input', {
             cls: 'task-search',
             attr: { 
                 type: 'text',
@@ -123,7 +133,7 @@ export class TaskView extends ItemView {
         });
 
         // Sort dropdown
-        const sortSelect = controlsSection.createEl('select', { cls: 'task-sort' });
+        const sortSelect = firstRow.createEl('select', { cls: 'task-sort' });
         sortSelect.createEl('option', { text: 'Name (A to Z)', value: 'name-asc' });
         sortSelect.createEl('option', { text: 'Name (Z to A)', value: 'name-desc' });
         sortSelect.createEl('option', { text: 'Created (Newest)', value: 'created-desc' });
@@ -145,6 +155,89 @@ export class TaskView extends ItemView {
             localStorage.setItem('dynamic-todo-list-sort', sortSelect.value);
             this.renderTaskList();
         });
+
+        // Create a container for the second row (action buttons)
+        const secondRow = controlsSection.createDiv({ cls: 'task-controls-row task-action-buttons' });
+
+        // Collapse all button
+        const collapseAllBtn = secondRow.createEl('button', {
+            cls: 'task-action-button',
+            attr: { 'aria-label': 'Collapse all sections' }
+        });
+        setIcon(collapseAllBtn, 'chevrons-down-up');
+        collapseAllBtn.addEventListener('click', () => this.collapseAll());
+
+        // Expand all button
+        const expandAllBtn = secondRow.createEl('button', {
+            cls: 'task-action-button',
+            attr: { 'aria-label': 'Expand all sections' }
+        });
+        setIcon(expandAllBtn, 'chevrons-up-down');
+        expandAllBtn.addEventListener('click', () => this.expandAll());
+
+        // Hide completed checkbox container
+        const hideCompletedContainer = secondRow.createDiv({ cls: 'task-hide-completed-container' });
+        const hideCompletedCheckbox = hideCompletedContainer.createEl('input', {
+            cls: 'task-hide-completed-checkbox',
+            attr: { 
+                type: 'checkbox',
+                id: 'hide-completed-tasks',
+                checked: this.hideCompleted,
+                'aria-label': 'Hide all completed tasks'
+            }
+        });
+        
+        this.hideCompletedLabel = hideCompletedContainer.createEl('label', {
+            cls: 'task-hide-completed-label',
+            text: 'Hide completed',
+            attr: { 
+                for: 'hide-completed-tasks',
+                title: 'When checked: hide all completed tasks. When unchecked: show recent completed tasks (older than archive threshold will still be hidden)'
+            }
+        });
+
+        hideCompletedCheckbox.addEventListener('change', () => {
+            this.hideCompleted = hideCompletedCheckbox.checked;
+            localStorage.setItem('dynamic-todo-list-hide-completed', this.hideCompleted.toString());
+            this.renderTaskList();
+        });
+        
+        // Store reference to checkbox for state synchronization
+        this.hideCompletedCheckbox = hideCompletedCheckbox;
+    }
+
+    /**
+     * Refreshes the view to reflect any setting changes
+     */
+    public refreshSettings(): void {
+        this.renderTaskList();
+    }
+
+    private collapseAll(): void {
+        // Get all file paths from current tasks
+        const allPaths = new Set<string>();
+        this.tasks.forEach(task => allPaths.add(task.sourceFile.path));
+        
+        // Add all paths to collapsed sections
+        this.collapsedSections = new Set(allPaths);
+        
+        // Save state
+        localStorage.setItem('dynamic-todo-list-collapsed-sections', 
+            JSON.stringify(Array.from(this.collapsedSections)));
+        
+        // Re-render
+        this.renderTaskList();
+    }
+
+    private expandAll(): void {
+        // Clear all collapsed sections
+        this.collapsedSections.clear();
+        
+        // Save state
+        localStorage.setItem('dynamic-todo-list-collapsed-sections', '[]');
+        
+        // Re-render
+        this.renderTaskList();
     }
 
     setLoading(loading: boolean): void {
@@ -182,14 +275,23 @@ export class TaskView extends ItemView {
     }
 
     private filterTasks(): Task[] {
-        if (!this.searchInput?.value) {
-            return this.tasks;
+        let filtered = this.tasks;
+        
+        // Apply search filter
+        if (this.searchInput?.value) {
+            const searchTerm = this.searchInput.value.toLowerCase();
+            filtered = filtered.filter(task => 
+                task.taskText.toLowerCase().includes(searchTerm) ||
+                task.sourceFile.path.toLowerCase().includes(searchTerm)
+            );
         }
-        const searchTerm = this.searchInput.value.toLowerCase();
-        return this.tasks.filter(task => 
-            task.taskText.toLowerCase().includes(searchTerm) ||
-            task.sourceFile.path.toLowerCase().includes(searchTerm)
-        );
+        
+        // Apply completed filter if enabled
+        if (this.hideCompleted) {
+            filtered = filtered.filter(task => !task.completed);
+        }
+        
+        return filtered;
     }
 
     private sortTasks(tasks: Task[], sortBy: string): Task[] {
@@ -327,46 +429,56 @@ export class TaskView extends ItemView {
             tasks.open.forEach(task => this.renderTaskItem(openTasksList as HTMLElement, task));
         }
 
-        // Filter completed tasks that haven't expired
-        const threshold = this.processor.settings.archiveCompletedOlderThan;
-        const thresholdDate = new Date();
-        thresholdDate.setDate(thresholdDate.getDate() - threshold);
-        
-        const recentCompletedTasks = tasks.completed.filter(task => {
-            if (!task.completionDate) return true;
-            const completedDate = new Date(task.completionDate);
-            return completedDate >= thresholdDate;
-        });
+        // Only render completed tasks section if hide completed is unchecked
+        if (!this.hideCompleted) {
+            // When hide completed is OFF, filter completed tasks by auto-archive threshold
+            // Only show completed tasks newer than the threshold
+            const threshold = this.plugin.settings.archiveCompletedOlderThan;
+            
+            let recentCompletedTasks = tasks.completed;
+            
+            // If threshold is > 0, filter out old completed tasks
+            if (threshold > 0) {
+                const thresholdDate = new Date();
+                thresholdDate.setDate(thresholdDate.getDate() - threshold);
+                
+                recentCompletedTasks = tasks.completed.filter(task => {
+                    if (!task.completionDate) return true; // Show tasks without completion date
+                    const completedDate = new Date(task.completionDate);
+                    return completedDate >= thresholdDate; // Show tasks completed after threshold
+                });
+            }
 
-        // Create completed tasks section if there are any recent ones
-        if (recentCompletedTasks.length > 0) {
-            const completedSection = content.createDiv({ cls: 'completed-tasks-section' });
-            const completedHeader = completedSection.createDiv({
-                cls: 'completed-tasks-header clickable'
-            });
-            
-            const completedToggle = completedHeader.createDiv({
-                cls: 'completed-tasks-toggle'
-            });
-            
-            completedHeader.createEl('span', {
-                text: `Completed Tasks (${recentCompletedTasks.length})`
-            });
-            
-            const completedContent = completedSection.createDiv({
-                cls: 'completed-tasks-content collapsed'
-            });
-            
-            setIcon(completedToggle, 'chevron-right');
-            
-            recentCompletedTasks.forEach(task => this.renderTaskItem(completedContent as HTMLElement, task));
-            
-            completedHeader.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const isCollapsed = completedContent.hasClass('collapsed');
-                completedContent.toggleClass('collapsed', !isCollapsed);
-                setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
-            });
+            // Create completed tasks section if there are any recent ones
+            if (recentCompletedTasks.length > 0) {
+                const completedSection = content.createDiv({ cls: 'completed-tasks-section' });
+                const completedHeader = completedSection.createDiv({
+                    cls: 'completed-tasks-header clickable'
+                });
+                
+                const completedToggle = completedHeader.createDiv({
+                    cls: 'completed-tasks-toggle'
+                });
+                
+                completedHeader.createEl('span', {
+                    text: `Completed Tasks (${recentCompletedTasks.length})`
+                });
+                
+                const completedContent = completedSection.createDiv({
+                    cls: 'completed-tasks-content collapsed'
+                });
+                
+                setIcon(completedToggle, 'chevron-right');
+                
+                recentCompletedTasks.forEach(task => this.renderTaskItem(completedContent as HTMLElement, task));
+                
+                completedHeader.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isCollapsed = completedContent.hasClass('collapsed');
+                    completedContent.toggleClass('collapsed', !isCollapsed);
+                    setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
+                });
+            }
         }
 
         // Set up section collapse functionality
@@ -573,65 +685,81 @@ export class TaskView extends ItemView {
             openTasks.forEach(task => this.renderTaskItem(openTasksList, task));
         }
 
-        // Filter completed tasks by age
-        const threshold = this.processor.settings.archiveCompletedOlderThan;
-        const thresholdDate = new Date();
-        thresholdDate.setDate(thresholdDate.getDate() - threshold);
-        
-        const recentCompletedTasks = completedTasks.filter(task => {
-            if (!task.completionDate) return true;
-            const completedDate = new Date(task.completionDate);
-            return completedDate >= thresholdDate;
-        });
-
-        // Handle completed tasks section
-        if (recentCompletedTasks.length > 0) {
-            let completedSection = section.querySelector('.completed-tasks-section') as HTMLElement;
-            let completedContent = section.querySelector('.completed-tasks-content') as HTMLElement;
+        // Only handle completed tasks section if hide completed is unchecked
+        if (!this.hideCompleted) {
+            // When hide completed is OFF, filter completed tasks by auto-archive threshold
+            // Only show completed tasks newer than the threshold
+            const threshold = this.plugin.settings.archiveCompletedOlderThan;
             
-            if (!completedSection) {
-                completedSection = createDiv({ cls: 'completed-tasks-section' });
-                const completedHeader = completedSection.createDiv({
-                    cls: 'completed-tasks-header clickable'
-                });
+            let recentCompletedTasks = completedTasks;
+            
+            // If threshold is > 0, filter out old completed tasks
+            if (threshold > 0) {
+                const thresholdDate = new Date();
+                thresholdDate.setDate(thresholdDate.getDate() - threshold);
                 
-                const completedToggle = completedHeader.createDiv({
-                    cls: 'completed-tasks-toggle'
+                recentCompletedTasks = completedTasks.filter(task => {
+                    if (!task.completionDate) return true; // Show tasks without completion date
+                    const completedDate = new Date(task.completionDate);
+                    return completedDate >= thresholdDate; // Show tasks completed after threshold
                 });
-                
-                completedHeader.createEl('span', {
-                    text: `Completed Tasks (${recentCompletedTasks.length})`
-                });
-                
-                completedContent = completedSection.createDiv({
-                    cls: 'completed-tasks-content collapsed'
-                });
-                
-                setIcon(completedToggle, 'chevron-right');
-                
-                completedHeader.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const isCollapsed = completedContent.hasClass('collapsed');
-                    completedContent.toggleClass('collapsed', !isCollapsed);
-                    setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
-                });
+            }
 
-                section.appendChild(completedSection);
+            // Handle completed tasks section
+            if (recentCompletedTasks.length > 0) {
+                let completedSection = section.querySelector('.completed-tasks-section') as HTMLElement;
+                let completedContent = section.querySelector('.completed-tasks-content') as HTMLElement;
+                
+                if (!completedSection) {
+                    completedSection = createDiv({ cls: 'completed-tasks-section' });
+                    const completedHeader = completedSection.createDiv({
+                        cls: 'completed-tasks-header clickable'
+                    });
+                    
+                    const completedToggle = completedHeader.createDiv({
+                        cls: 'completed-tasks-toggle'
+                    });
+                    
+                    completedHeader.createEl('span', {
+                        text: `Completed Tasks (${recentCompletedTasks.length})`
+                    });
+                    
+                    completedContent = completedSection.createDiv({
+                        cls: 'completed-tasks-content collapsed'
+                    });
+                    
+                    setIcon(completedToggle, 'chevron-right');
+                    
+                    completedHeader.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const isCollapsed = completedContent.hasClass('collapsed');
+                        completedContent.toggleClass('collapsed', !isCollapsed);
+                        setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
+                    });
+
+                    section.appendChild(completedSection);
+                } else {
+                    // Update the completed tasks counter
+                    const counter = completedSection.querySelector('span');
+                    if (counter) {
+                        counter.textContent = `Completed Tasks (${recentCompletedTasks.length})`;
+                    }
+                }
+
+                // Clear and re-render completed tasks
+                if (completedContent) {
+                    completedContent.empty();
+                    recentCompletedTasks.forEach(task => this.renderTaskItem(completedContent, task));
+                }
             } else {
-                // Update the completed tasks counter
-                const counter = completedSection.querySelector('span');
-                if (counter) {
-                    counter.textContent = `Completed Tasks (${recentCompletedTasks.length})`;
+                // Remove completed section if no completed tasks
+                const completedSection = section.querySelector('.completed-tasks-section');
+                if (completedSection) {
+                    completedSection.remove();
                 }
             }
-
-            // Clear and re-render completed tasks
-            if (completedContent) {
-                completedContent.empty();
-                recentCompletedTasks.forEach(task => this.renderTaskItem(completedContent, task));
-            }
         } else {
-            // Remove completed section if no completed tasks
+            // Remove completed section if hide completed is enabled
             const completedSection = section.querySelector('.completed-tasks-section');
             if (completedSection) {
                 completedSection.remove();
@@ -682,8 +810,18 @@ export class TaskView extends ItemView {
             completed: Boolean(task.completed)
         }));
         
+        // Sync checkbox state to ensure visual and functional states match
+        this.syncCheckboxState();
+        
         if (!this.isLoading) {
             this.renderTaskList();
+        }
+    }
+    
+    private syncCheckboxState(): void {
+        // Ensure checkbox visual state matches internal state
+        if (this.hideCompletedCheckbox) {
+            this.hideCompletedCheckbox.checked = this.hideCompleted;
         }
     }
 }

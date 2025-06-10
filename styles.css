@@ -49,6 +49,60 @@
     margin: 16px 12px;
 }
 
+.task-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.task-controls-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.task-controls-row:first-child {
+    flex-wrap: wrap;
+}
+
+/* Action buttons row */
+.task-action-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Action button styles */
+.task-action-button {
+    background: var(--background-modifier-border);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    height: 28px;
+    min-width: 28px;
+}
+
+.task-action-button:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--background-modifier-hover);
+}
+
+.task-action-button:active {
+    background: var(--background-modifier-active-hover);
+}
+
+.task-action-button svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+}
+
 .task-search, .task-sort {
     flex-grow: 1;
     height: 32px;
@@ -611,3 +665,80 @@
     text-decoration: underline;
     cursor: pointer;
 }
+
+/* Hide Completed Toggle Styles */
+.task-hide-completed-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+    border: 1px solid transparent;
+    position: relative;
+}
+
+.task-hide-completed-container:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.task-hide-completed-checkbox {
+    margin: 0;
+    cursor: pointer;
+}
+
+.task-hide-completed-label {
+    margin: 0;
+    cursor: pointer;
+    font-size: 0.8em;
+    color: var(--text-muted);
+    transition: color 0.2s ease;
+    user-select: none;
+    font-weight: normal;
+}
+
+.task-hide-completed-container:hover .task-hide-completed-label {
+    color: var(--text-normal);
+}
+
+/* Settings UI enhancements */
+.setting-item[data-setting="archive-completed"] .setting-item-description {
+    position: relative;
+    padding-left: 20px;
+}
+
+.setting-item[data-setting="archive-completed"] .setting-item-description::before {
+    content: "ⓘ";
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--text-accent);
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+/* Enhanced description styling for related settings */
+.setting-item .setting-item-description {
+    line-height: 1.4;
+}
+
+.setting-item .setting-item-description strong {
+    color: var(--text-normal);
+}
+
+/* Info indicator for settings relationships */
+.settings-info-indicator {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background-color: var(--text-accent);
+    color: var(--text-on-accent);
+    text-align: center;
+    line-height: 14px;
+    font-size: 10px;
+    font-weight: bold;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+

@@ -89,11 +89,11 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 }));
 
         // Archive threshold setting
-        new Setting(containerEl)
-            .setName('Archive completed tasks')
-            .setDesc('Hide completed tasks older than X days (0 to show all)')
+        const archiveSetting = new Setting(containerEl)
+            .setName('Auto-archive completed tasks')
+            .setDesc('Automatically hide completed tasks older than X days from view. Set to 0 to disable auto-archiving. This works together with the "Hide completed" toggle in the side pane - when the toggle is OFF, tasks are filtered by this age threshold.')
             .addText(text => text
-                .setPlaceholder('7') // Default placeholder
+                .setPlaceholder('90') // Default placeholder
                 .setValue(String(this.plugin.settings.archiveCompletedOlderThan)) // Set the current value
                 .onChange(async (value) => { // Handle value changes
                     const days = parseInt(value); // Parse the input as an integer
@@ -103,6 +103,9 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     this.plugin.settings.archiveCompletedOlderThan = days;
                     await this.plugin.saveSettings(); // Save the new setting
                 }));
+        
+        // Add data attribute for styling
+        archiveSetting.settingEl.setAttribute('data-setting', 'archive-completed');
 
         // Link Behavior section
         containerEl.createEl('h3', { text: 'Task Link Behavior' });
