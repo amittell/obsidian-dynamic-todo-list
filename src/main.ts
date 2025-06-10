@@ -44,7 +44,7 @@ export default class DynamicTodoList extends Plugin {
         this.registerView(
             TASK_VIEW_TYPE,
             (leaf: WorkspaceLeaf) => {
-                this.view = new TaskView(leaf, [], this.processor); // Initialize with empty tasks array
+                this.view = new TaskView(leaf, [], this.processor, this); // Pass the plugin instance
                 return this.view;
             }
         );
