@@ -110,7 +110,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
         // Show file headers setting
         const showFileHeadersSetting = new Setting(containerEl)
             .setName('Show file headers')
-            .setDesc('Display file names as section headers in the task list. When disabled, shows a flat list of tasks without file groupings.')
+            .setDesc('Display file names as section headers in the task list. When disabled, shows a flat list of tasks without file groupings. Example: "Project Tasks > Task 1" vs just "Task 1".')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showFileHeaders)
                 .onChange(async (value) => {
@@ -143,7 +143,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
         if (!this.plugin.settings.showFileHeaders) {
             const moveCompletedSetting = new Setting(containerEl)
                 .setName('Move completed tasks to bottom of list')
-                .setDesc('When enabled, completed tasks automatically appear at the bottom of the flat task list, after all open tasks.')
+                .setDesc('When enabled, completed tasks automatically appear at the bottom of the flat task list, after all open tasks. Example: "Buy milk" (open) followed by "Done shopping" (completed).')
                 .addToggle(toggle => toggle
                     .setValue(this.plugin.settings.moveCompletedTasksToBottom)
                     .onChange(async (value) => {

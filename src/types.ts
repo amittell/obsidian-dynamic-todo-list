@@ -20,7 +20,7 @@ export interface PluginSettings {
   archiveCompletedOlderThan: number; // Added archive setting for completed tasks
   enableWikiLinks: boolean; // Added wiki-link setting
   enableUrlLinks: boolean; // Added URL link setting
-  showFileHeaders: boolean; // Show file headers in task list sidebar
+  showFileHeaders: boolean; // When enabled, groups tasks by source file with collapsible headers. When disabled, shows flat task list.
   moveCompletedTasksToBottom: boolean; // Move completed tasks to bottom in flat mode
   showCreatedModifiedInFileHeaders: boolean; // Show created/modified dates in file headers when grouped mode is enabled
 }

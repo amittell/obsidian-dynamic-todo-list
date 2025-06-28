@@ -6,6 +6,14 @@ import DynamicTodoList from './main';
 export const TASK_VIEW_TYPE = 'dynamic-todo-list';
 
 export class TaskView extends ItemView {
+    private static readonly STORAGE_KEYS = {
+        COLLAPSED_SECTIONS: 'dynamic-todo-list-collapsed-sections',
+        HIDE_COMPLETED: 'dynamic-todo-list-hide-completed',
+        SEARCH: 'dynamic-todo-list-search',
+        SORT: 'dynamic-todo-list-sort',
+        COMPLETED_NOTES_COLLAPSED: 'dynamic-todo-list-completed-notes-collapsed'
+    } as const;
+
     private tasks: Task[] = [];
     private processor: TaskProcessor;
     private plugin: DynamicTodoList;
@@ -19,6 +27,7 @@ export class TaskView extends ItemView {
     private hideCompleted = false;
     private hideCompletedLabel: HTMLLabelElement | null = null;
     private hideCompletedCheckbox: HTMLInputElement | null = null;
+    private fileStatsCache = new Map<string, {ctime: number, mtime: number, expires: number}>();
 
     getIsLoading(): boolean {
         return this.isLoading;
@@ -45,24 +54,41 @@ export class TaskView extends ItemView {
         return 'checkbox-glyph';
     }
 
-    private async getFileCreationDate(file: TFile): Promise<string> {
+    private async getFileStats(file: TFile): Promise<{ctime: number, mtime: number} | null> {
+        const now = Date.now();
+        const cached = this.fileStatsCache.get(file.path);
+        
+        // Use cached stats if they're less than 30 seconds old
+        if (cached && cached.expires > now) {
+            return {ctime: cached.ctime, mtime: cached.mtime};
+        }
+        
         try {
             const stat = await this.app.vault.adapter.stat(file.path);
-            return stat ? new Date(stat.ctime).toLocaleDateString() : '';
+            if (stat) {
+                // Cache for 30 seconds
+                this.fileStatsCache.set(file.path, {
+                    ctime: stat.ctime,
+                    mtime: stat.mtime,
+                    expires: now + 30000
+                });
+                return {ctime: stat.ctime, mtime: stat.mtime};
+            }
+            return null;
         } catch (error) {
-            console.error('Error getting file creation date:', error);
-            return '';
+            console.error('Error getting file stats:', error);
+            return null;
         }
     }
 
+    private async getFileCreationDate(file: TFile): Promise<string> {
+        const stats = await this.getFileStats(file);
+        return stats ? new Date(stats.ctime).toLocaleDateString() : '';
+    }
+
     private async getFileModifiedDate(file: TFile): Promise<string> {
-        try {
-            const stat = await this.app.vault.adapter.stat(file.path);
-            return stat ? new Date(stat.mtime).toLocaleDateString() : '';
-        } catch (error) {
-            console.error('Error getting file modified date:', error);
-            return '';
-        }
+        const stats = await this.getFileStats(file);
+        return stats ? new Date(stats.mtime).toLocaleDateString() : '';
     }
 
     async onOpen(): Promise<void> {
@@ -71,9 +97,9 @@ export class TaskView extends ItemView {
 
         // Restore states FIRST before creating UI elements
         this.collapsedSections = new Set(
-            JSON.parse(localStorage.getItem('dynamic-todo-list-collapsed-sections') || '[]')
+            JSON.parse(localStorage.getItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS) || '[]')
         );
-        this.hideCompleted = localStorage.getItem('dynamic-todo-list-hide-completed') === 'true';
+        this.hideCompleted = localStorage.getItem(TaskView.STORAGE_KEYS.HIDE_COMPLETED) === 'true';
 
         // Create all UI elements
         const headerSection = contentEl.createDiv({ cls: 'task-list-header-section' });
@@ -112,7 +138,7 @@ export class TaskView extends ItemView {
         const firstRow = controlsSection.createDiv({ cls: 'task-controls-row' });
         
         // Search box with stored value
-        const savedSearch = localStorage.getItem('dynamic-todo-list-search') || '';
+        const savedSearch = localStorage.getItem(TaskView.STORAGE_KEYS.SEARCH) || '';
         this.searchInput = firstRow.createEl('input', {
             cls: 'task-search',
             attr: { 
@@ -127,7 +153,7 @@ export class TaskView extends ItemView {
                 clearTimeout(this.debounceTimeout);
             }
             this.debounceTimeout = setTimeout(() => {
-                localStorage.setItem('dynamic-todo-list-search', this.searchInput!.value);
+                localStorage.setItem(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
                 this.renderTaskList();
             }, 200);
         });
@@ -142,7 +168,7 @@ export class TaskView extends ItemView {
         sortSelect.createEl('option', { text: 'Modified (Oldest)', value: 'modified-asc' });
 
         // Get saved sort preference
-        const savedSort = localStorage.getItem('dynamic-todo-list-sort') || 
+        const savedSort = localStorage.getItem(TaskView.STORAGE_KEYS.SORT) || 
             `${this.processor.settings.sortPreference.field}-${this.processor.settings.sortPreference.direction}`;
         sortSelect.value = savedSort;
         
@@ -152,7 +178,7 @@ export class TaskView extends ItemView {
                 field: field as 'name' | 'created' | 'lastModified',
                 direction: direction as 'asc' | 'desc'
             };
-            localStorage.setItem('dynamic-todo-list-sort', sortSelect.value);
+            localStorage.setItem(TaskView.STORAGE_KEYS.SORT, sortSelect.value);
             this.renderTaskList();
         });
 
@@ -198,7 +224,7 @@ export class TaskView extends ItemView {
 
         hideCompletedCheckbox.addEventListener('change', () => {
             this.hideCompleted = hideCompletedCheckbox.checked;
-            localStorage.setItem('dynamic-todo-list-hide-completed', this.hideCompleted.toString());
+            localStorage.setItem(TaskView.STORAGE_KEYS.HIDE_COMPLETED, this.hideCompleted.toString());
             this.renderTaskList();
         });
         
@@ -222,7 +248,7 @@ export class TaskView extends ItemView {
         this.collapsedSections = new Set(allPaths);
         
         // Save state
-        localStorage.setItem('dynamic-todo-list-collapsed-sections', 
+        localStorage.setItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, 
             JSON.stringify(Array.from(this.collapsedSections)));
         
         // Re-render
@@ -234,7 +260,7 @@ export class TaskView extends ItemView {
         this.collapsedSections.clear();
         
         // Save state
-        localStorage.setItem('dynamic-todo-list-collapsed-sections', '[]');
+        localStorage.setItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, '[]');
         
         // Re-render
         this.renderTaskList();
@@ -292,6 +318,21 @@ export class TaskView extends ItemView {
         }
         
         return filtered;
+    }
+
+    private filterTasksByArchiveThreshold(tasks: Task[]): Task[] {
+        const threshold = this.plugin.settings.archiveCompletedOlderThan;
+        if (threshold <= 0) return tasks;
+        
+        const thresholdDate = new Date();
+        thresholdDate.setDate(thresholdDate.getDate() - threshold);
+        
+        return tasks.filter(task => {
+            if (!task.completed) return true; // Show all open tasks
+            if (!task.completionDate) return true; // Show completed tasks without completion date
+            const completedDate = new Date(task.completionDate);
+            return completedDate >= thresholdDate; // Show recently completed tasks
+        });
     }
 
     private sortTasks(tasks: Task[], sortBy: string): Task[] {
@@ -373,7 +414,7 @@ export class TaskView extends ItemView {
             });
             
             // Get saved collapse state for completed notes section
-            const isCollapsed = localStorage.getItem('dynamic-todo-list-completed-notes-collapsed') === 'true';
+            const isCollapsed = localStorage.getItem(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED) === 'true';
             const content = completedNotesSection.createDiv({ 
                 cls: `completed-notes-content ${isCollapsed ? 'collapsed' : ''}` 
             });
@@ -385,7 +426,7 @@ export class TaskView extends ItemView {
                 const willCollapse = !content.hasClass('collapsed');
                 content.toggleClass('collapsed', willCollapse);
                 setIcon(toggleIcon, willCollapse ? 'chevron-right' : 'chevron-down');
-                localStorage.setItem('dynamic-todo-list-completed-notes-collapsed', willCollapse.toString());
+                localStorage.setItem(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED, willCollapse.toString());
             });
 
             // Render completed note sections
@@ -409,18 +450,7 @@ export class TaskView extends ItemView {
         // Apply completed task filtering based on archive threshold
         let visibleTasks = filteredTasks;
         if (!this.hideCompleted) {
-            const threshold = this.plugin.settings.archiveCompletedOlderThan;
-            if (threshold > 0) {
-                const thresholdDate = new Date();
-                thresholdDate.setDate(thresholdDate.getDate() - threshold);
-                
-                visibleTasks = filteredTasks.filter(task => {
-                    if (!task.completed) return true; // Show all open tasks
-                    if (!task.completionDate) return true; // Show completed tasks without completion date
-                    const completedDate = new Date(task.completionDate);
-                    return completedDate >= thresholdDate; // Show recently completed tasks
-                });
-            }
+            visibleTasks = this.filterTasksByArchiveThreshold(filteredTasks);
         }
 
         // Create flat task list container
@@ -508,22 +538,7 @@ export class TaskView extends ItemView {
         // Only render completed tasks section if hide completed is unchecked
         if (!this.hideCompleted) {
             // When hide completed is OFF, filter completed tasks by auto-archive threshold
-            // Only show completed tasks newer than the threshold
-            const threshold = this.plugin.settings.archiveCompletedOlderThan;
-            
-            let recentCompletedTasks = tasks.completed;
-            
-            // If threshold is > 0, filter out old completed tasks
-            if (threshold > 0) {
-                const thresholdDate = new Date();
-                thresholdDate.setDate(thresholdDate.getDate() - threshold);
-                
-                recentCompletedTasks = tasks.completed.filter(task => {
-                    if (!task.completionDate) return true; // Show tasks without completion date
-                    const completedDate = new Date(task.completionDate);
-                    return completedDate >= thresholdDate; // Show tasks completed after threshold
-                });
-            }
+            const recentCompletedTasks = this.filterTasksByArchiveThreshold(tasks.completed);
 
             // Create completed tasks section if there are any recent ones
             if (recentCompletedTasks.length > 0) {
@@ -570,7 +585,7 @@ export class TaskView extends ItemView {
             }
 
             // Save collapse states
-            localStorage.setItem('dynamic-todo-list-collapsed-sections', 
+            localStorage.setItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, 
                 JSON.stringify(Array.from(this.collapsedSections)));
         });
     }
