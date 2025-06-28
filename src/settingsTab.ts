@@ -108,7 +108,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
         archiveSetting.settingEl.setAttribute('data-setting', 'archive-completed');
 
         // Show file headers setting
-        const showFileHeadersSetting = new Setting(containerEl)
+        new Setting(containerEl)
             .setName('Show file headers')
             .setDesc('Display file names as section headers in the task list. When disabled, shows a flat list of tasks without file groupings. Example: "Project Tasks > Task 1" vs just "Task 1".')
             .addToggle(toggle => toggle

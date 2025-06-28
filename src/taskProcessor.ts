@@ -1,4 +1,4 @@
-import { TFile, Vault, App } from 'obsidian';
+import { TFile, Vault, App, MarkdownView } from 'obsidian';
 import { Task, PluginSettings } from './types';
 
 /**
@@ -217,14 +217,14 @@ export class TaskProcessor {
 
         try {
             // Find the most recent leaf that's not our task list
-            let targetLeaf = this.app.workspace.getLeaf('tab');
+            const targetLeaf = this.app.workspace.getLeaf('tab');
 
             await targetLeaf.openFile(task.sourceFile); // Open the file containing the task
 
             // Focus and scroll to the task line
             const view = targetLeaf.view;
             if (view.getViewType() === 'markdown') {
-                const editor = (view as any).editor; // Access the editor (type assertion needed)
+                const editor = (view as MarkdownView).editor; // Access the editor with proper type
                 if (editor) {
                     const pos = { line: task.lineNumber, ch: 0 }; // Cursor position at the start of the line
                     editor.setCursor(pos); // Set the cursor position

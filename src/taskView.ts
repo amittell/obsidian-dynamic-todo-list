@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile, MarkdownRenderer, MarkdownView, Component, parseLinktext, MarkdownPostProcessorContext } from 'obsidian';
+import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile, MarkdownRenderer, MarkdownView, Component, parseLinktext } from 'obsidian';
 import { Task } from './types';
 import { TaskProcessor } from './taskProcessor';
 import DynamicTodoList from './main';
