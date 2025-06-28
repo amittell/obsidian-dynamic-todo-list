@@ -367,25 +367,25 @@ export class TaskView extends ItemView {
         this.taskListContainer.empty();
 
         // Filter tasks
-        let filteredTasks = this.filterTasks();
+        const filteredTasks = this.filterTasks();
 
         // Check if we should show file headers
         if (this.plugin.settings.showFileHeaders) {
-            // Sort tasks for grouped view
-            const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
-            if (sortSelect) {
-                filteredTasks = this.sortTasks(filteredTasks, sortSelect.value);
-            }
+            // Sorting is handled inside renderTaskListWithHeaders
             await this.renderTaskListWithHeaders(filteredTasks);
         } else {
-            // For flat view, sorting is handled inside renderFlatTaskList
+            // Sorting is handled inside renderFlatTaskList
             await this.renderFlatTaskList(filteredTasks);
         }
     }
 
     private async renderTaskListWithHeaders(filteredTasks: Task[]) {
+        // Sort tasks for grouped view
+        const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
+        const sortedTasks = sortSelect ? this.sortTasks(filteredTasks, sortSelect.value) : filteredTasks;
+        
         // Group tasks by file
-        const { activeNotes, completedNotes } = this.groupTasksByFile(filteredTasks);
+        const { activeNotes, completedNotes } = this.groupTasksByFile(sortedTasks);
 
         if (Object.keys(activeNotes).length === 0 && Object.keys(completedNotes).length === 0) {
             this.taskListContainer!.createEl('div', {
@@ -505,7 +505,7 @@ export class TaskView extends ItemView {
         });
 
         // Add date information if setting is enabled
-        if (file && this.plugin.settings.showCreatedModifiedInFileHeaders) {
+        if (file && this.plugin.settings.showFileHeaderDates) {
             const dateInfo = header.createDiv({ cls: 'task-section-dates' });
             const createdDate = await this.getFileCreationDate(file);
             const modifiedDate = await this.getFileModifiedDate(file);

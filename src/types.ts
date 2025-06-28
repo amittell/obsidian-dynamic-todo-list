@@ -22,7 +22,7 @@ export interface PluginSettings {
   enableUrlLinks: boolean; // Added URL link setting
   showFileHeaders: boolean; // When enabled, groups tasks by source file with collapsible headers. When disabled, shows flat task list.
   moveCompletedTasksToBottom: boolean; // Move completed tasks to bottom in flat mode
-  showCreatedModifiedInFileHeaders: boolean; // Show created/modified dates in file headers when grouped mode is enabled
+  showFileHeaderDates: boolean; // Show created/modified dates in file headers when grouped mode is enabled
 }
 
 /**
@@ -68,5 +68,5 @@ export const DEFAULT_SETTINGS: Readonly<PluginSettings> = {
   enableUrlLinks: true, // Default: true
   showFileHeaders: true, // Default: true (current behavior)
   moveCompletedTasksToBottom: false, // Default: false (preserve current behavior)
-  showCreatedModifiedInFileHeaders: true, // Default: true (show created/modified dates in file headers)
+  showFileHeaderDates: true, // Default: true (show created/modified dates in file headers)
 };

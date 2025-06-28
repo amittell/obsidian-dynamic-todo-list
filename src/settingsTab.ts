@@ -126,9 +126,9 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 .setName('Show created / modified dates')
                 .setDesc('When enabled, file headers show creation and modification dates. When disabled, headers show only the file name for a more compact view.')
                 .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.showCreatedModifiedInFileHeaders)
+                    .setValue(this.plugin.settings.showFileHeaderDates)
                     .onChange(async (value) => {
-                        this.plugin.settings.showCreatedModifiedInFileHeaders = value;
+                        this.plugin.settings.showFileHeaderDates = value;
                         await this.plugin.saveSettings();
                         await this.plugin.refreshTaskView(); // Refresh view to apply changes
                     }));
