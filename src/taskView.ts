@@ -14,6 +14,8 @@ export class TaskView extends ItemView {
         COMPLETED_NOTES_COLLAPSED: 'dynamic-todo-list-completed-notes-collapsed'
     } as const;
 
+    private static readonly MAX_CACHE_SIZE = 1000;
+
     private tasks: Task[] = [];
     private processor: TaskProcessor;
     private plugin: DynamicTodoList;
@@ -54,6 +56,24 @@ export class TaskView extends ItemView {
         return 'checkbox-glyph';
     }
 
+    private cleanupExpiredCache(): void {
+        const now = Date.now();
+        for (const [key, value] of this.fileStatsCache) {
+            if (value.expires <= now) {
+                this.fileStatsCache.delete(key);
+            }
+        }
+        
+        // Enforce size limit by removing oldest entries
+        if (this.fileStatsCache.size > TaskView.MAX_CACHE_SIZE) {
+            const entries = Array.from(this.fileStatsCache.entries());
+            const toRemove = entries
+                .sort(([,a], [,b]) => a.expires - b.expires)
+                .slice(0, this.fileStatsCache.size - TaskView.MAX_CACHE_SIZE);
+            toRemove.forEach(([key]) => this.fileStatsCache.delete(key));
+        }
+    }
+
     private async getFileStats(file: TFile): Promise<{ctime: number, mtime: number} | null> {
         const now = Date.now();
         const cached = this.fileStatsCache.get(file.path);
@@ -61,6 +81,11 @@ export class TaskView extends ItemView {
         // Use cached stats if they're less than 30 seconds old
         if (cached && cached.expires > now) {
             return {ctime: cached.ctime, mtime: cached.mtime};
+        }
+        
+        // Clean up expired entries periodically
+        if (this.fileStatsCache.size > 100) {
+            this.cleanupExpiredCache();
         }
         
         try {
@@ -89,6 +114,11 @@ export class TaskView extends ItemView {
     private async getFileModifiedDate(file: TFile): Promise<string> {
         const stats = await this.getFileStats(file);
         return stats ? new Date(stats.mtime).toLocaleDateString() : '';
+    }
+
+    private getSortValue(): string {
+        const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
+        return sortSelect?.value || 'name-asc';
     }
 
     async onOpen(): Promise<void> {
@@ -381,8 +411,8 @@ export class TaskView extends ItemView {
 
     private async renderTaskListWithHeaders(filteredTasks: Task[]) {
         // Sort tasks for grouped view
-        const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
-        const sortedTasks = sortSelect ? this.sortTasks(filteredTasks, sortSelect.value) : filteredTasks;
+        const sortValue = this.getSortValue();
+        const sortedTasks = this.sortTasks(filteredTasks, sortValue);
         
         // Group tasks by file
         const { activeNotes, completedNotes } = this.groupTasksByFile(sortedTasks);
@@ -456,8 +486,7 @@ export class TaskView extends ItemView {
         }
 
         // Get sort preference
-        const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
-        const sortValue = sortSelect?.value || 'name-asc';
+        const sortValue = this.getSortValue();
 
         // Create flat task list container
         const flatTaskList = this.taskListContainer!.createDiv({ cls: 'flat-task-list' });
@@ -785,21 +814,7 @@ export class TaskView extends ItemView {
         if (!this.hideCompleted) {
             // When hide completed is OFF, filter completed tasks by auto-archive threshold
             // Only show completed tasks newer than the threshold
-            const threshold = this.plugin.settings.archiveCompletedOlderThan;
-            
-            let recentCompletedTasks = completedTasks;
-            
-            // If threshold is > 0, filter out old completed tasks
-            if (threshold > 0) {
-                const thresholdDate = new Date();
-                thresholdDate.setDate(thresholdDate.getDate() - threshold);
-                
-                recentCompletedTasks = completedTasks.filter(task => {
-                    if (!task.completionDate) return true; // Show tasks without completion date
-                    const completedDate = new Date(task.completionDate);
-                    return completedDate >= thresholdDate; // Show tasks completed after threshold
-                });
-            }
+            const recentCompletedTasks = this.filterTasksByArchiveThreshold(completedTasks);
 
             // Handle completed tasks section
             if (recentCompletedTasks.length > 0) {
