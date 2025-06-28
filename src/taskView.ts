@@ -306,7 +306,13 @@ export class TaskView extends ItemView {
                     return (a.sourceFile.stat.mtime - b.sourceFile.stat.mtime) * multiplier;
                 case 'name':
                 default:
-                    return a.sourceFile.basename.localeCompare(b.sourceFile.basename) * multiplier;
+                    if (this.plugin.settings.showFileHeaders) {
+                        // Grouped mode: sort by file name (current behavior)
+                        return a.sourceFile.basename.localeCompare(b.sourceFile.basename) * multiplier;
+                    } else {
+                        // Flat mode: sort by task text content
+                        return a.taskText.localeCompare(b.taskText) * multiplier;
+                    }
             }
         });
     }
