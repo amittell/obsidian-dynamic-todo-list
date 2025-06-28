@@ -575,6 +575,33 @@ export class TaskView extends ItemView {
         });
     }
 
+    private async addFileContextToTask(taskEl: HTMLElement, task: Task): Promise<void> {
+        const fileContextEl = taskEl.createDiv({ cls: 'task-file-context' });
+        
+        const fileName = task.sourceFile.basename;
+        
+        // Create main file context line with filename
+        let contextText = `from: ${fileName}`;
+        
+        // Add dates if the setting is enabled
+        if (this.plugin.settings.showCreatedModifiedInFlatMode) {
+            const createdDate = await this.getFileCreationDate(task.sourceFile);
+            const modifiedDate = await this.getFileModifiedDate(task.sourceFile);
+            
+            if (createdDate || modifiedDate) {
+                const dates = [];
+                if (createdDate) dates.push(`created: ${createdDate}`);
+                if (modifiedDate) dates.push(`modified: ${modifiedDate}`);
+                contextText += ` (${dates.join(', ')})`;
+            }
+        }
+        
+        fileContextEl.createDiv({
+            cls: 'task-file-context-text',
+            text: contextText
+        });
+    }
+
     private renderTaskItem(container: HTMLElement, task: Task) {
         const taskEl = container.createDiv({ cls: 'task-item' });
         
@@ -585,6 +612,14 @@ export class TaskView extends ItemView {
             cls: `task-text ${task.completed ? 'task-completed' : ''}`
         });
         const taskClickWrapper = taskTextContainer.createDiv({ cls: 'task-click-wrapper' });
+
+        // Add file context in flat mode
+        if (!this.plugin.settings.showFileHeaders) {
+            // Handle async file context rendering
+            this.addFileContextToTask(taskEl, task).catch(error => {
+                console.error('Error adding file context to task:', error);
+            });
+        }
 
         // Create component for proper cleanup
         const component = new Component();

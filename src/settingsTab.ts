@@ -137,6 +137,23 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
             moveCompletedSetting.settingEl.style.marginLeft = '20px';
             moveCompletedSetting.settingEl.style.borderLeft = '2px solid var(--background-modifier-border)';
             moveCompletedSetting.settingEl.style.paddingLeft = '15px';
+
+            // Show created/modified dates in flat mode setting (second-level conditional sub-setting)
+            const showDatesSetting = new Setting(containerEl)
+                .setName('Show created / modified dates')
+                .setDesc('When enabled, each task shows its source file name with creation and modification dates. When disabled, shows only the file name for a more compact view.')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.showCreatedModifiedInFlatMode)
+                    .onChange(async (value) => {
+                        this.plugin.settings.showCreatedModifiedInFlatMode = value;
+                        await this.plugin.saveSettings();
+                        await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    }));
+            
+            // Style as a second-level sub-setting with more indentation
+            showDatesSetting.settingEl.style.marginLeft = '40px';
+            showDatesSetting.settingEl.style.borderLeft = '2px solid var(--background-modifier-border)';
+            showDatesSetting.settingEl.style.paddingLeft = '15px';
         }
 
         // Link Behavior section

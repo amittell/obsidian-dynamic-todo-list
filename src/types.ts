@@ -22,6 +22,7 @@ export interface PluginSettings {
   enableUrlLinks: boolean; // Added URL link setting
   showFileHeaders: boolean; // Show file headers in task list sidebar
   moveCompletedTasksToBottom: boolean; // Move completed tasks to bottom in flat mode
+  showCreatedModifiedInFlatMode: boolean; // Show created/modified dates with file context in flat mode
 }
 
 /**
@@ -67,4 +68,5 @@ export const DEFAULT_SETTINGS: Readonly<PluginSettings> = {
   enableUrlLinks: true, // Default: true
   showFileHeaders: true, // Default: true (current behavior)
   moveCompletedTasksToBottom: false, // Default: false (preserve current behavior)
+  showCreatedModifiedInFlatMode: true, // Default: true (show created/modified dates in flat mode)
 };
