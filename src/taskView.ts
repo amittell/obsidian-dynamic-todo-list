@@ -326,11 +326,20 @@ export class TaskView extends ItemView {
             filteredTasks = this.sortTasks(filteredTasks, sortSelect.value);
         }
 
+        // Check if we should show file headers
+        if (this.plugin.settings.showFileHeaders) {
+            await this.renderTaskListWithHeaders(filteredTasks);
+        } else {
+            await this.renderFlatTaskList(filteredTasks);
+        }
+    }
+
+    private async renderTaskListWithHeaders(filteredTasks: Task[]) {
         // Group tasks by file
         const { activeNotes, completedNotes } = this.groupTasksByFile(filteredTasks);
 
         if (Object.keys(activeNotes).length === 0 && Object.keys(completedNotes).length === 0) {
-            this.taskListContainer.createEl('div', {
+            this.taskListContainer!.createEl('div', {
                 cls: 'task-empty-state',
                 text: this.searchInput?.value 
                     ? 'No matching tasks found.'
@@ -341,7 +350,7 @@ export class TaskView extends ItemView {
 
         // Create active notes section
         if (Object.keys(activeNotes).length > 0) {
-            const activeSection = this.taskListContainer.createDiv({ cls: 'active-notes-section' });
+            const activeSection = this.taskListContainer!.createDiv({ cls: 'active-notes-section' });
             for (const [path, tasks] of Object.entries(activeNotes)) {
                 await this.renderFileSection(path, tasks, activeSection);
             }
@@ -349,7 +358,7 @@ export class TaskView extends ItemView {
 
         // Create completed notes section if there are any
         if (Object.keys(completedNotes).length > 0) {
-            const completedNotesSection = this.taskListContainer.createDiv({ cls: 'completed-notes-section' });
+            const completedNotesSection = this.taskListContainer!.createDiv({ cls: 'completed-notes-section' });
             const header = completedNotesSection.createDiv({ cls: 'completed-notes-header clickable' });
             const toggleIcon = header.createDiv({ cls: 'completed-notes-toggle' });
             
@@ -378,6 +387,43 @@ export class TaskView extends ItemView {
                 await this.renderFileSection(path, tasks, content);
             }
         }
+    }
+
+    private async renderFlatTaskList(filteredTasks: Task[]) {
+        if (filteredTasks.length === 0) {
+            this.taskListContainer!.createEl('div', {
+                cls: 'task-empty-state',
+                text: this.searchInput?.value 
+                    ? 'No matching tasks found.'
+                    : 'No tasks found. Add tasks to your notes with the configured task prefix.'
+            });
+            return;
+        }
+
+        // Apply completed task filtering based on archive threshold
+        let visibleTasks = filteredTasks;
+        if (!this.hideCompleted) {
+            const threshold = this.plugin.settings.archiveCompletedOlderThan;
+            if (threshold > 0) {
+                const thresholdDate = new Date();
+                thresholdDate.setDate(thresholdDate.getDate() - threshold);
+                
+                visibleTasks = filteredTasks.filter(task => {
+                    if (!task.completed) return true; // Show all open tasks
+                    if (!task.completionDate) return true; // Show completed tasks without completion date
+                    const completedDate = new Date(task.completionDate);
+                    return completedDate >= thresholdDate; // Show recently completed tasks
+                });
+            }
+        }
+
+        // Create flat task list container
+        const flatTaskList = this.taskListContainer!.createDiv({ cls: 'flat-task-list' });
+        
+        // Render each task directly
+        visibleTasks.forEach(task => {
+            this.renderTaskItem(flatTaskList, task);
+        });
     }
 
     private async renderFileSection(path: string, tasks: { open: Task[], completed: Task[] }, container: HTMLElement) {

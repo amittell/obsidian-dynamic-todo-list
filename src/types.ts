@@ -20,6 +20,7 @@ export interface PluginSettings {
   archiveCompletedOlderThan: number; // Added archive setting for completed tasks
   enableWikiLinks: boolean; // Added wiki-link setting
   enableUrlLinks: boolean; // Added URL link setting
+  showFileHeaders: boolean; // Show file headers in task list sidebar
 }
 
 /**
@@ -63,4 +64,5 @@ export const DEFAULT_SETTINGS: Readonly<PluginSettings> = {
   archiveCompletedOlderThan: 90, // Default: 90 days
   enableWikiLinks: false, // Default: false (better for mobile experience)
   enableUrlLinks: true, // Default: true
+  showFileHeaders: true, // Default: true (current behavior)
 };

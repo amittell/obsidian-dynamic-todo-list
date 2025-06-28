@@ -107,6 +107,18 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
         // Add data attribute for styling
         archiveSetting.settingEl.setAttribute('data-setting', 'archive-completed');
 
+        // Show file headers setting
+        new Setting(containerEl)
+            .setName('Show file headers')
+            .setDesc('Display file names as section headers in the task list. When disabled, shows a flat list of tasks without file groupings.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showFileHeaders)
+                .onChange(async (value) => {
+                    this.plugin.settings.showFileHeaders = value;
+                    await this.plugin.saveSettings();
+                    await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                }));
+
         // Link Behavior section
         containerEl.createEl('h3', { text: 'Task Link Behavior' });
 
