@@ -366,17 +366,19 @@ export class TaskView extends ItemView {
         if (!this.taskListContainer) return;
         this.taskListContainer.empty();
 
-        // Filter and sort tasks
+        // Filter tasks
         let filteredTasks = this.filterTasks();
-        const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
-        if (sortSelect) {
-            filteredTasks = this.sortTasks(filteredTasks, sortSelect.value);
-        }
 
         // Check if we should show file headers
         if (this.plugin.settings.showFileHeaders) {
+            // Sort tasks for grouped view
+            const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
+            if (sortSelect) {
+                filteredTasks = this.sortTasks(filteredTasks, sortSelect.value);
+            }
             await this.renderTaskListWithHeaders(filteredTasks);
         } else {
+            // For flat view, sorting is handled inside renderFlatTaskList
             await this.renderFlatTaskList(filteredTasks);
         }
     }
@@ -453,6 +455,10 @@ export class TaskView extends ItemView {
             visibleTasks = this.filterTasksByArchiveThreshold(filteredTasks);
         }
 
+        // Get sort preference
+        const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
+        const sortValue = sortSelect?.value || 'name-asc';
+
         // Create flat task list container
         const flatTaskList = this.taskListContainer!.createDiv({ cls: 'flat-task-list' });
         
@@ -463,9 +469,6 @@ export class TaskView extends ItemView {
             const completedTasks = visibleTasks.filter(task => task.completed);
             
             // Sort each group separately using existing sort logic
-            const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
-            const sortValue = sortSelect?.value || 'name-asc';
-            
             const sortedOpenTasks = this.sortTasks(openTasks, sortValue);
             const sortedCompletedTasks = this.sortTasks(completedTasks, sortValue);
             
@@ -479,8 +482,9 @@ export class TaskView extends ItemView {
                 this.renderTaskItem(flatTaskList, task);
             });
         } else {
-            // Render tasks in their current sorted order (existing behavior)
-            visibleTasks.forEach(task => {
+            // Sort all tasks together and render in order
+            const sortedTasks = this.sortTasks(visibleTasks, sortValue);
+            sortedTasks.forEach(task => {
                 this.renderTaskItem(flatTaskList, task);
             });
         }
