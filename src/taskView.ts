@@ -14,7 +14,7 @@ export class TaskView extends ItemView {
         COMPLETED_NOTES_COLLAPSED: 'dynamic-todo-list-completed-notes-collapsed'
     } as const;
 
-    private static readonly MAX_CACHE_SIZE = 1000;
+    private static readonly MAX_CACHE_SIZE = 1000; // TODO: Make configurable via settings
 
     private tasks: Task[] = [];
     private processor: TaskProcessor;
@@ -66,11 +66,13 @@ export class TaskView extends ItemView {
         
         // Enforce size limit by removing oldest entries
         if (this.fileStatsCache.size > TaskView.MAX_CACHE_SIZE) {
-            const entries = Array.from(this.fileStatsCache.entries());
-            const toRemove = entries
-                .sort(([,a], [,b]) => a.expires - b.expires)
-                .slice(0, this.fileStatsCache.size - TaskView.MAX_CACHE_SIZE);
-            toRemove.forEach(([key]) => this.fileStatsCache.delete(key));
+            const toRemoveCount = this.fileStatsCache.size - TaskView.MAX_CACHE_SIZE;
+            const sortedEntries = Array.from(this.fileStatsCache.entries())
+                .sort(([,a], [,b]) => a.expires - b.expires);
+            
+            for (let i = 0; i < toRemoveCount; i++) {
+                this.fileStatsCache.delete(sortedEntries[i][0]);
+            }
         }
     }
 
@@ -118,7 +120,18 @@ export class TaskView extends ItemView {
 
     private getSortValue(): string {
         const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
-        return sortSelect?.value || 'name-asc';
+        return sortSelect?.value || `${this.processor.settings.sortPreference.field}-${this.processor.settings.sortPreference.direction}`;
+    }
+
+    private getSortedTasks(tasks: Task[]): Task[] {
+        const sortValue = this.getSortValue();
+        return this.sortTasks(tasks, sortValue);
+    }
+
+    private async preloadFileStats(tasks: Task[]): Promise<void> {
+        const uniqueFiles = new Set(tasks.map(task => task.sourceFile));
+        const promises = Array.from(uniqueFiles).map(file => this.getFileStats(file));
+        await Promise.allSettled(promises);
     }
 
     async onOpen(): Promise<void> {
@@ -399,6 +412,11 @@ export class TaskView extends ItemView {
         // Filter tasks
         const filteredTasks = this.filterTasks();
 
+        // Preload file stats if needed
+        if (this.plugin.settings.showFileHeaders && this.plugin.settings.showFileHeaderDates) {
+            await this.preloadFileStats(filteredTasks);
+        }
+
         // Check if we should show file headers
         if (this.plugin.settings.showFileHeaders) {
             // Sorting is handled inside renderTaskListWithHeaders
@@ -411,8 +429,7 @@ export class TaskView extends ItemView {
 
     private async renderTaskListWithHeaders(filteredTasks: Task[]) {
         // Sort tasks for grouped view
-        const sortValue = this.getSortValue();
-        const sortedTasks = this.sortTasks(filteredTasks, sortValue);
+        const sortedTasks = this.getSortedTasks(filteredTasks);
         
         // Group tasks by file
         const { activeNotes, completedNotes } = this.groupTasksByFile(sortedTasks);
@@ -485,9 +502,6 @@ export class TaskView extends ItemView {
             visibleTasks = this.filterTasksByArchiveThreshold(filteredTasks);
         }
 
-        // Get sort preference
-        const sortValue = this.getSortValue();
-
         // Create flat task list container
         const flatTaskList = this.taskListContainer!.createDiv({ cls: 'flat-task-list' });
         
@@ -498,8 +512,8 @@ export class TaskView extends ItemView {
             const completedTasks = visibleTasks.filter(task => task.completed);
             
             // Sort each group separately using existing sort logic
-            const sortedOpenTasks = this.sortTasks(openTasks, sortValue);
-            const sortedCompletedTasks = this.sortTasks(completedTasks, sortValue);
+            const sortedOpenTasks = this.getSortedTasks(openTasks);
+            const sortedCompletedTasks = this.getSortedTasks(completedTasks);
             
             // Render open tasks first
             sortedOpenTasks.forEach(task => {
@@ -512,7 +526,7 @@ export class TaskView extends ItemView {
             });
         } else {
             // Sort all tasks together and render in order
-            const sortedTasks = this.sortTasks(visibleTasks, sortValue);
+            const sortedTasks = this.getSortedTasks(visibleTasks);
             sortedTasks.forEach(task => {
                 this.renderTaskItem(flatTaskList, task);
             });
