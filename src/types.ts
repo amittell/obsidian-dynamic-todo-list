@@ -21,6 +21,7 @@ export interface PluginSettings {
   enableWikiLinks: boolean; // Added wiki-link setting
   enableUrlLinks: boolean; // Added URL link setting
   showFileHeaders: boolean; // Show file headers in task list sidebar
+  moveCompletedTasksToBottom: boolean; // Move completed tasks to bottom in flat mode
 }
 
 /**
@@ -65,4 +66,5 @@ export const DEFAULT_SETTINGS: Readonly<PluginSettings> = {
   enableWikiLinks: false, // Default: false (better for mobile experience)
   enableUrlLinks: true, // Default: true
   showFileHeaders: true, // Default: true (current behavior)
+  moveCompletedTasksToBottom: false, // Default: false (preserve current behavior)
 };

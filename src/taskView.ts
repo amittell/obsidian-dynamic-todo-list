@@ -426,10 +426,34 @@ export class TaskView extends ItemView {
         // Create flat task list container
         const flatTaskList = this.taskListContainer!.createDiv({ cls: 'flat-task-list' });
         
-        // Render each task directly
-        visibleTasks.forEach(task => {
-            this.renderTaskItem(flatTaskList, task);
-        });
+        // Check if we should group completed tasks at the bottom
+        if (this.plugin.settings.moveCompletedTasksToBottom && !this.hideCompleted) {
+            // Split tasks into open and completed
+            const openTasks = visibleTasks.filter(task => !task.completed);
+            const completedTasks = visibleTasks.filter(task => task.completed);
+            
+            // Sort each group separately using existing sort logic
+            const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
+            const sortValue = sortSelect?.value || 'name-asc';
+            
+            const sortedOpenTasks = this.sortTasks(openTasks, sortValue);
+            const sortedCompletedTasks = this.sortTasks(completedTasks, sortValue);
+            
+            // Render open tasks first
+            sortedOpenTasks.forEach(task => {
+                this.renderTaskItem(flatTaskList, task);
+            });
+            
+            // Render completed tasks after open tasks
+            sortedCompletedTasks.forEach(task => {
+                this.renderTaskItem(flatTaskList, task);
+            });
+        } else {
+            // Render tasks in their current sorted order (existing behavior)
+            visibleTasks.forEach(task => {
+                this.renderTaskItem(flatTaskList, task);
+            });
+        }
     }
 
     private async renderFileSection(path: string, tasks: { open: Task[], completed: Task[] }, container: HTMLElement) {

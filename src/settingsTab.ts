@@ -108,7 +108,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
         archiveSetting.settingEl.setAttribute('data-setting', 'archive-completed');
 
         // Show file headers setting
-        new Setting(containerEl)
+        const showFileHeadersSetting = new Setting(containerEl)
             .setName('Show file headers')
             .setDesc('Display file names as section headers in the task list. When disabled, shows a flat list of tasks without file groupings.')
             .addToggle(toggle => toggle
@@ -117,7 +117,27 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     this.plugin.settings.showFileHeaders = value;
                     await this.plugin.saveSettings();
                     await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    this.display(); // Re-render settings to show/hide conditional setting
                 }));
+
+        // Move completed tasks to bottom setting (conditional sub-setting)
+        if (!this.plugin.settings.showFileHeaders) {
+            const moveCompletedSetting = new Setting(containerEl)
+                .setName('Move completed tasks to bottom of list')
+                .setDesc('When enabled, completed tasks automatically appear at the bottom of the flat task list, after all open tasks.')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.moveCompletedTasksToBottom)
+                    .onChange(async (value) => {
+                        this.plugin.settings.moveCompletedTasksToBottom = value;
+                        await this.plugin.saveSettings();
+                        await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    }));
+            
+            // Style as a sub-setting with indentation
+            moveCompletedSetting.settingEl.style.marginLeft = '20px';
+            moveCompletedSetting.settingEl.style.borderLeft = '2px solid var(--background-modifier-border)';
+            moveCompletedSetting.settingEl.style.paddingLeft = '15px';
+        }
 
         // Link Behavior section
         containerEl.createEl('h3', { text: 'Task Link Behavior' });
