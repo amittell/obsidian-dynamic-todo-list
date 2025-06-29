@@ -1,0 +1,228 @@
+# Obsidian Dynamic Todo List Plugin - Cursor Rules
+
+## Project Overview
+This is an Obsidian plugin written in TypeScript that creates a dynamic, aggregated list of tasks from notes. It provides a centralized task management system while maintaining task context in source notes.
+
+## Core Technologies & Architecture
+- **Platform**: Obsidian Plugin (Electron-based)
+- **Language**: TypeScript (target: ES6, module: ESNext)
+- **Build Tool**: esbuild
+- **UI Framework**: Obsidian API (custom DOM manipulation)
+- **Bundler**: esbuild with custom configuration
+- **Testing**: Manual test suite with structured test data
+
+## Key Technical Context
+
+### Plugin Architecture
+- **main.ts**: Plugin lifecycle, command registration, settings management
+  - Plugin lifecycle (onload/onunload)
+  - Settings management and file watchers with debouncing
+  - View registration for task sidebar
+  - Command registration (toggle view with Cmd/Ctrl+J)
+- **taskProcessor.ts**: Task extraction, file processing, state management
+  - File scanning based on configurable tags (#tasks) or headers
+  - Task extraction from markdown files
+  - Task state management and file updates
+  - Folder filtering (include/exclude patterns)
+- **taskView.ts**: Sidebar UI, task rendering, user interactions
+  - Renders tasks grouped by source file with collapsible sections
+  - Search and sort functionality
+  - Separate sections for active and completed tasks
+  - Persists UI state in localStorage
+- **taskListModal.ts**: Modal alternative for task display
+- **settingsTab.ts**: Plugin configuration interface
+  - Task identification method (tag vs header)
+  - Note tag/task prefix customization
+  - Folder filters and sort preferences
+- **types.ts**: TypeScript interfaces and type definitions
+- **utils.ts**: Utility functions (debouncing, etc.)
+
+### Data Flow
+1. Files tagged with `#tasks` (configurable) are monitored
+2. Tasks are extracted using configurable prefix (default: `- [ ]`)
+3. Tasks are indexed and synchronized in real-time
+4. UI updates automatically on file changes (debounced)
+5. Task completion syncs bidirectionally with source files
+
+### Key Interfaces
+```typescript
+interface PluginSettings {
+  noteTag: string;
+  taskPrefix: string;
+  taskIdentificationMethod: 'tag' | 'header';
+  folderFilters: { include: string[]; exclude: string[]; };
+  sortPreference: { field: 'created' | 'lastModified' | 'name'; direction: 'asc' | 'desc'; };
+  archiveCompletedOlderThan: number;
+  enableWikiLinks: boolean;
+  enableUrlLinks: boolean;
+}
+
+interface Task {
+  sourceFile: TFile;
+  taskText: string;
+  lineNumber: number;
+  completed: boolean;
+  completionDate: string | null;
+  sourceLink: string;
+  lastUpdated: number;
+}
+```
+
+## Development Guidelines
+
+### Code Style & Patterns
+- Use TypeScript strict mode (strictNullChecks: true, noImplicitAny: true)
+- Follow Obsidian API patterns and conventions
+- Use async/await for file operations and API calls
+- Implement proper error handling with user-friendly notices
+- Use debouncing for performance-critical operations (file watchers, search)
+- Follow the existing modular architecture
+
+### Obsidian-Specific Patterns
+- Use `this.app` to access Obsidian's API
+- Implement proper plugin lifecycle (onload/onunload)
+- Use `cachedRead` for efficient file reading
+- Register views using `this.registerView()`
+- Use `Notice` for user feedback
+- Follow Obsidian's settings API patterns
+
+### File & Task Processing
+- Always handle file read errors gracefully
+- Use debounced file watchers to prevent excessive reprocessing
+- Implement proper state synchronization between UI and source files
+- Cache file metadata to improve performance
+- Handle edge cases like deleted files, corrupted data
+
+### UI Development
+- Use Obsidian's DOM utilities and CSS classes
+- Implement proper event cleanup in `onunload`
+- Make UI responsive and mobile-friendly
+- Use proper accessibility attributes
+- Implement loading states and error boundaries
+
+### Performance Considerations
+- Debounce expensive operations (file indexing, search)
+- Use efficient DOM manipulation techniques
+- Implement proper cleanup to prevent memory leaks
+- Use Obsidian's caching mechanisms where available
+- Minimize DOM updates with batch operations
+
+## Testing & Quality
+- Follow test plan in `TEST_PLAN.md`
+- Use test data in `test-data/` directory
+- Test both desktop and mobile scenarios
+- Verify real-time sync functionality
+- Test error handling and edge cases
+- Ensure proper plugin lifecycle management
+
+## Common Patterns to Follow
+
+### Settings Management
+```typescript
+// Load settings with defaults
+const settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+
+// Save settings
+await this.saveData(this.settings);
+```
+
+### File Processing
+```typescript
+// Debounced file processing
+const debouncedProcess = debounce(this.processFiles.bind(this), 300);
+
+// Safe file reading
+try {
+  const content = await this.app.vault.cachedRead(file);
+  // Process content
+} catch (error) {
+  console.error('Failed to read file:', error);
+  new Notice('Failed to read file');
+}
+```
+
+### Task Synchronization
+```typescript
+// Update task in source file
+const lines = content.split('\n');
+lines[task.lineNumber] = newTaskLine;
+await this.app.vault.modify(task.sourceFile, lines.join('\n'));
+```
+
+## Development Workflow
+
+### Build Commands
+```bash
+npm run build   # Production build with TypeScript checks
+npm run dev     # Development build with watch mode
+npm install     # Install dependencies
+./build_deploy.sh  # Build and deploy to Obsidian vault
+```
+
+### Key Implementation Details
+- **Debouncing**: File changes are debounced to prevent excessive re-indexing
+- **Performance**: Uses Obsidian's `cachedRead` for efficient file reading
+- **State Management**: Tasks include `lastUpdated` timestamps to prevent circular updates
+- **Mobile Support**: Designed to work on both desktop and mobile (`isDesktopOnly: false`)
+- **Error Handling**: Graceful degradation with user notices for errors
+- **UI State Persistence**: Uses localStorage for collapse states, search term, and sort preferences
+
+## Dependencies & Build
+- **Core**: obsidian API, TypeScript
+- **Build**: esbuild, @types/node
+- **Development**: eslint, @typescript-eslint/*
+- **Scripts**: `npm run dev` (development), `npm run build` (production)
+
+## Important Notes
+- Plugin must work on both desktop and mobile Obsidian
+- Real-time synchronization is critical for user experience
+- Error handling should be graceful with user feedback
+- Performance is important due to file system operations
+- Follow Obsidian's plugin guidelines and best practices
+- Maintain backward compatibility with existing configurations
+
+## When Making Changes
+1. Consider impact on real-time sync functionality
+2. Test both tag-based and header-based task identification
+3. Verify mobile compatibility
+4. Update type definitions if adding new features
+5. Follow the existing error handling patterns
+6. Test with the provided test data files
+7. Ensure proper cleanup in plugin lifecycle methods
+
+## Files and Folders to Ignore
+
+### Build Artifacts & Dependencies
+- `node_modules/` - NPM dependencies
+- `main.js` - Compiled TypeScript output (generated from src/)
+- `main.js.bak` - Backup of compiled output
+- `*.js.map` - Source map files
+- `dist/` - Distribution folder (if exists)
+
+### Development & Tool-Specific Files
+- `.git/` - Git version control
+- `.llm-context/` - LLM context files
+- `memory_bank/` - Development memory files
+- `.DS_Store` - macOS system files
+- `Thumbs.db` - Windows thumbnail cache
+- `*.log` - Log files
+- `.cache/` - Cache directories
+
+### Temporary & Generated Files
+- `*.tmp` - Temporary files
+- `*.swp` - Vim swap files
+- `.nyc_output/` - Test coverage output
+- `coverage/` - Test coverage reports
+
+### Configuration Files (Context Aware)
+Consider these based on context:
+- `package-lock.json` - Usually ignore for AI assistance (large, auto-generated)
+- `branch_diff.txt` - Large diff file, ignore unless specifically working on it
+
+## Folder Structure Context
+- `src/`: TypeScript source files (PRIMARY FOCUS)
+- `test-data/`: Test files for manual testing
+- `main.js`: Compiled output (built from src/) - IGNORE
+- `styles.css`: Plugin styles
+- `manifest.json`: Plugin metadata
+- Build configuration in `esbuild.config.mjs` 

@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile, MarkdownRenderer, MarkdownView, Component, parseLinktext, MarkdownPostProcessorContext } from 'obsidian';
+import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile, MarkdownRenderer, MarkdownView, Component, parseLinktext } from 'obsidian';
 import { Task } from './types';
 import { TaskProcessor } from './taskProcessor';
 import DynamicTodoList from './main';
@@ -6,6 +6,16 @@ import DynamicTodoList from './main';
 export const TASK_VIEW_TYPE = 'dynamic-todo-list';
 
 export class TaskView extends ItemView {
+    private static readonly STORAGE_KEYS = {
+        COLLAPSED_SECTIONS: 'dynamic-todo-list-collapsed-sections',
+        HIDE_COMPLETED: 'dynamic-todo-list-hide-completed',
+        SEARCH: 'dynamic-todo-list-search',
+        SORT: 'dynamic-todo-list-sort',
+        COMPLETED_NOTES_COLLAPSED: 'dynamic-todo-list-completed-notes-collapsed'
+    } as const;
+
+    private static readonly MAX_CACHE_SIZE = 1000; // TODO: Make configurable via settings
+
     private tasks: Task[] = [];
     private processor: TaskProcessor;
     private plugin: DynamicTodoList;
@@ -19,6 +29,8 @@ export class TaskView extends ItemView {
     private hideCompleted = false;
     private hideCompletedLabel: HTMLLabelElement | null = null;
     private hideCompletedCheckbox: HTMLInputElement | null = null;
+    private fileStatsCache = new Map<string, {ctime: number, mtime: number, expires: number}>();
+    private pendingFileStats = new Map<string, Promise<{ctime: number, mtime: number} | null>>();
 
     getIsLoading(): boolean {
         return this.isLoading;
@@ -45,24 +57,106 @@ export class TaskView extends ItemView {
         return 'checkbox-glyph';
     }
 
-    private async getFileCreationDate(file: TFile): Promise<string> {
-        try {
-            const stat = await this.app.vault.adapter.stat(file.path);
-            return stat ? new Date(stat.ctime).toLocaleDateString() : '';
-        } catch (error) {
-            console.error('Error getting file creation date:', error);
-            return '';
+    private cleanupExpiredCache(): void {
+        const now = Date.now();
+        for (const [key, value] of this.fileStatsCache) {
+            if (value.expires <= now) {
+                this.fileStatsCache.delete(key);
+            }
+        }
+        
+        // Enforce size limit by removing oldest entries
+        if (this.fileStatsCache.size > TaskView.MAX_CACHE_SIZE) {
+            const toRemoveCount = this.fileStatsCache.size - TaskView.MAX_CACHE_SIZE;
+            const sortedEntries = Array.from(this.fileStatsCache.entries())
+                .sort(([,a], [,b]) => a.expires - b.expires);
+            
+            for (let i = 0; i < toRemoveCount; i++) {
+                this.fileStatsCache.delete(sortedEntries[i][0]);
+            }
         }
     }
 
-    private async getFileModifiedDate(file: TFile): Promise<string> {
-        try {
-            const stat = await this.app.vault.adapter.stat(file.path);
-            return stat ? new Date(stat.mtime).toLocaleDateString() : '';
-        } catch (error) {
-            console.error('Error getting file modified date:', error);
-            return '';
+    private async getFileStats(file: TFile): Promise<{ctime: number, mtime: number} | null> {
+        const now = Date.now();
+        const cached = this.fileStatsCache.get(file.path);
+        
+        // Use cached stats if they're less than 30 seconds old
+        if (cached && cached.expires > now) {
+            return {ctime: cached.ctime, mtime: cached.mtime};
         }
+        
+        // Check if there's already a pending request for this file
+        const pending = this.pendingFileStats.get(file.path);
+        if (pending) {
+            return pending;
+        }
+        
+        // Clean up expired entries periodically
+        if (this.fileStatsCache.size > 100) {
+            this.cleanupExpiredCache();
+        }
+        
+        // Create new request and cache the promise to prevent race conditions
+        const promise = this.fetchFileStats(file.path, now);
+        this.pendingFileStats.set(file.path, promise);
+        
+        try {
+            const result = await promise;
+            return result;
+        } finally {
+            // Always clean up the pending request when done
+            this.pendingFileStats.delete(file.path);
+        }
+    }
+
+    private async fetchFileStats(filePath: string, requestTime: number): Promise<{ctime: number, mtime: number} | null> {
+        try {
+            const stat = await this.app.vault.adapter.stat(filePath);
+            if (stat) {
+                // Cache for 30 seconds
+                this.fileStatsCache.set(filePath, {
+                    ctime: stat.ctime,
+                    mtime: stat.mtime,
+                    expires: requestTime + 30000
+                });
+                return {ctime: stat.ctime, mtime: stat.mtime};
+            }
+            return null;
+        } catch (error) {
+            console.error('Error getting file stats:', error);
+            return null;
+        }
+    }
+
+    private async getFileCreationDate(file: TFile): Promise<string> {
+        const stats = await this.getFileStats(file);
+        return stats ? new Date(stats.ctime).toLocaleDateString() : '';
+    }
+
+    private async getFileModifiedDate(file: TFile): Promise<string> {
+        const stats = await this.getFileStats(file);
+        return stats ? new Date(stats.mtime).toLocaleDateString() : '';
+    }
+
+    private getSortValue(): string {
+        const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
+        if (!sortSelect) {
+            console.warn('Sort select element not found, using default sort preference');
+            return `${this.processor.settings.sortPreference.field}-${this.processor.settings.sortPreference.direction}`;
+        }
+        return sortSelect.value || `${this.processor.settings.sortPreference.field}-${this.processor.settings.sortPreference.direction}`;
+    }
+
+    private getSortedTasks(tasks: Task[]): Task[] {
+        const sortValue = this.getSortValue();
+        return this.sortTasks(tasks, sortValue);
+    }
+
+    private async preloadFileStats(tasks: Task[]): Promise<void> {
+        const uniqueFiles = new Set(tasks.map(task => task.sourceFile));
+        const promises = Array.from(uniqueFiles).map(file => this.getFileStats(file));
+        await Promise.allSettled(promises);
     }
 
     async onOpen(): Promise<void> {
@@ -71,9 +165,9 @@ export class TaskView extends ItemView {
 
         // Restore states FIRST before creating UI elements
         this.collapsedSections = new Set(
-            JSON.parse(localStorage.getItem('dynamic-todo-list-collapsed-sections') || '[]')
+            JSON.parse(localStorage.getItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS) || '[]')
         );
-        this.hideCompleted = localStorage.getItem('dynamic-todo-list-hide-completed') === 'true';
+        this.hideCompleted = localStorage.getItem(TaskView.STORAGE_KEYS.HIDE_COMPLETED) === 'true';
 
         // Create all UI elements
         const headerSection = contentEl.createDiv({ cls: 'task-list-header-section' });
@@ -112,7 +206,7 @@ export class TaskView extends ItemView {
         const firstRow = controlsSection.createDiv({ cls: 'task-controls-row' });
         
         // Search box with stored value
-        const savedSearch = localStorage.getItem('dynamic-todo-list-search') || '';
+        const savedSearch = localStorage.getItem(TaskView.STORAGE_KEYS.SEARCH) || '';
         this.searchInput = firstRow.createEl('input', {
             cls: 'task-search',
             attr: { 
@@ -127,7 +221,7 @@ export class TaskView extends ItemView {
                 clearTimeout(this.debounceTimeout);
             }
             this.debounceTimeout = setTimeout(() => {
-                localStorage.setItem('dynamic-todo-list-search', this.searchInput!.value);
+                localStorage.setItem(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
                 this.renderTaskList();
             }, 200);
         });
@@ -142,7 +236,7 @@ export class TaskView extends ItemView {
         sortSelect.createEl('option', { text: 'Modified (Oldest)', value: 'modified-asc' });
 
         // Get saved sort preference
-        const savedSort = localStorage.getItem('dynamic-todo-list-sort') || 
+        const savedSort = localStorage.getItem(TaskView.STORAGE_KEYS.SORT) || 
             `${this.processor.settings.sortPreference.field}-${this.processor.settings.sortPreference.direction}`;
         sortSelect.value = savedSort;
         
@@ -152,7 +246,7 @@ export class TaskView extends ItemView {
                 field: field as 'name' | 'created' | 'lastModified',
                 direction: direction as 'asc' | 'desc'
             };
-            localStorage.setItem('dynamic-todo-list-sort', sortSelect.value);
+            localStorage.setItem(TaskView.STORAGE_KEYS.SORT, sortSelect.value);
             this.renderTaskList();
         });
 
@@ -198,7 +292,7 @@ export class TaskView extends ItemView {
 
         hideCompletedCheckbox.addEventListener('change', () => {
             this.hideCompleted = hideCompletedCheckbox.checked;
-            localStorage.setItem('dynamic-todo-list-hide-completed', this.hideCompleted.toString());
+            localStorage.setItem(TaskView.STORAGE_KEYS.HIDE_COMPLETED, this.hideCompleted.toString());
             this.renderTaskList();
         });
         
@@ -222,7 +316,7 @@ export class TaskView extends ItemView {
         this.collapsedSections = new Set(allPaths);
         
         // Save state
-        localStorage.setItem('dynamic-todo-list-collapsed-sections', 
+        localStorage.setItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, 
             JSON.stringify(Array.from(this.collapsedSections)));
         
         // Re-render
@@ -234,7 +328,7 @@ export class TaskView extends ItemView {
         this.collapsedSections.clear();
         
         // Save state
-        localStorage.setItem('dynamic-todo-list-collapsed-sections', '[]');
+        localStorage.setItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, '[]');
         
         // Re-render
         this.renderTaskList();
@@ -294,6 +388,21 @@ export class TaskView extends ItemView {
         return filtered;
     }
 
+    private filterTasksByArchiveThreshold(tasks: Task[]): Task[] {
+        const threshold = this.plugin.settings.archiveCompletedOlderThan;
+        if (threshold <= 0) return tasks;
+        
+        const thresholdDate = new Date();
+        thresholdDate.setDate(thresholdDate.getDate() - threshold);
+        
+        return tasks.filter(task => {
+            if (!task.completed) return true; // Show all open tasks
+            if (!task.completionDate) return true; // Show completed tasks without completion date
+            const completedDate = new Date(task.completionDate);
+            return completedDate >= thresholdDate; // Show recently completed tasks
+        });
+    }
+
     private sortTasks(tasks: Task[], sortBy: string): Task[] {
         const [field, direction] = sortBy.split('-');
         const multiplier = direction === 'desc' ? -1 : 1;
@@ -306,7 +415,13 @@ export class TaskView extends ItemView {
                     return (a.sourceFile.stat.mtime - b.sourceFile.stat.mtime) * multiplier;
                 case 'name':
                 default:
-                    return a.sourceFile.basename.localeCompare(b.sourceFile.basename) * multiplier;
+                    if (this.plugin.settings.showFileHeaders) {
+                        // Grouped mode: sort by file name (current behavior)
+                        return a.sourceFile.basename.localeCompare(b.sourceFile.basename) * multiplier;
+                    } else {
+                        // Flat mode: sort by task text content
+                        return a.taskText.localeCompare(b.taskText) * multiplier;
+                    }
             }
         });
     }
@@ -319,18 +434,33 @@ export class TaskView extends ItemView {
         if (!this.taskListContainer) return;
         this.taskListContainer.empty();
 
-        // Filter and sort tasks
-        let filteredTasks = this.filterTasks();
-        const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
-        if (sortSelect) {
-            filteredTasks = this.sortTasks(filteredTasks, sortSelect.value);
+        // Filter tasks
+        const filteredTasks = this.filterTasks();
+
+        // Preload file stats if needed
+        if (this.plugin.settings.showFileHeaders && this.plugin.settings.showFileHeaderDates) {
+            await this.preloadFileStats(filteredTasks);
         }
 
+        // Check if we should show file headers
+        if (this.plugin.settings.showFileHeaders) {
+            // Sorting is handled inside renderTaskListWithHeaders
+            await this.renderTaskListWithHeaders(filteredTasks);
+        } else {
+            // Sorting is handled inside renderFlatTaskList
+            await this.renderFlatTaskList(filteredTasks);
+        }
+    }
+
+    private async renderTaskListWithHeaders(filteredTasks: Task[]) {
+        // Sort tasks for grouped view
+        const sortedTasks = this.getSortedTasks(filteredTasks);
+        
         // Group tasks by file
-        const { activeNotes, completedNotes } = this.groupTasksByFile(filteredTasks);
+        const { activeNotes, completedNotes } = this.groupTasksByFile(sortedTasks);
 
         if (Object.keys(activeNotes).length === 0 && Object.keys(completedNotes).length === 0) {
-            this.taskListContainer.createEl('div', {
+            this.taskListContainer!.createEl('div', {
                 cls: 'task-empty-state',
                 text: this.searchInput?.value 
                     ? 'No matching tasks found.'
@@ -341,7 +471,7 @@ export class TaskView extends ItemView {
 
         // Create active notes section
         if (Object.keys(activeNotes).length > 0) {
-            const activeSection = this.taskListContainer.createDiv({ cls: 'active-notes-section' });
+            const activeSection = this.taskListContainer!.createDiv({ cls: 'active-notes-section' });
             for (const [path, tasks] of Object.entries(activeNotes)) {
                 await this.renderFileSection(path, tasks, activeSection);
             }
@@ -349,7 +479,7 @@ export class TaskView extends ItemView {
 
         // Create completed notes section if there are any
         if (Object.keys(completedNotes).length > 0) {
-            const completedNotesSection = this.taskListContainer.createDiv({ cls: 'completed-notes-section' });
+            const completedNotesSection = this.taskListContainer!.createDiv({ cls: 'completed-notes-section' });
             const header = completedNotesSection.createDiv({ cls: 'completed-notes-header clickable' });
             const toggleIcon = header.createDiv({ cls: 'completed-notes-toggle' });
             
@@ -358,7 +488,7 @@ export class TaskView extends ItemView {
             });
             
             // Get saved collapse state for completed notes section
-            const isCollapsed = localStorage.getItem('dynamic-todo-list-completed-notes-collapsed') === 'true';
+            const isCollapsed = localStorage.getItem(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED) === 'true';
             const content = completedNotesSection.createDiv({ 
                 cls: `completed-notes-content ${isCollapsed ? 'collapsed' : ''}` 
             });
@@ -370,13 +500,61 @@ export class TaskView extends ItemView {
                 const willCollapse = !content.hasClass('collapsed');
                 content.toggleClass('collapsed', willCollapse);
                 setIcon(toggleIcon, willCollapse ? 'chevron-right' : 'chevron-down');
-                localStorage.setItem('dynamic-todo-list-completed-notes-collapsed', willCollapse.toString());
+                localStorage.setItem(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED, willCollapse.toString());
             });
 
             // Render completed note sections
             for (const [path, tasks] of Object.entries(completedNotes)) {
                 await this.renderFileSection(path, tasks, content);
             }
+        }
+    }
+
+    private async renderFlatTaskList(filteredTasks: Task[]) {
+        if (filteredTasks.length === 0) {
+            this.taskListContainer!.createEl('div', {
+                cls: 'task-empty-state',
+                text: this.searchInput?.value 
+                    ? 'No matching tasks found.'
+                    : 'No tasks found. Add tasks to your notes with the configured task prefix.'
+            });
+            return;
+        }
+
+        // Apply completed task filtering based on archive threshold
+        let visibleTasks = filteredTasks;
+        if (!this.hideCompleted) {
+            visibleTasks = this.filterTasksByArchiveThreshold(filteredTasks);
+        }
+
+        // Create flat task list container
+        const flatTaskList = this.taskListContainer!.createDiv({ cls: 'flat-task-list' });
+        
+        // Check if we should group completed tasks at the bottom
+        if (this.plugin.settings.moveCompletedTasksToBottom && !this.hideCompleted) {
+            // Split tasks into open and completed
+            const openTasks = visibleTasks.filter(task => !task.completed);
+            const completedTasks = visibleTasks.filter(task => task.completed);
+            
+            // Sort each group separately using existing sort logic
+            const sortedOpenTasks = this.getSortedTasks(openTasks);
+            const sortedCompletedTasks = this.getSortedTasks(completedTasks);
+            
+            // Render open tasks first
+            sortedOpenTasks.forEach(task => {
+                this.renderTaskItem(flatTaskList, task);
+            });
+            
+            // Render completed tasks after open tasks
+            sortedCompletedTasks.forEach(task => {
+                this.renderTaskItem(flatTaskList, task);
+            });
+        } else {
+            // Sort all tasks together and render in order
+            const sortedTasks = this.getSortedTasks(visibleTasks);
+            sortedTasks.forEach(task => {
+                this.renderTaskItem(flatTaskList, task);
+            });
         }
     }
 
@@ -394,8 +572,8 @@ export class TaskView extends ItemView {
             text: file?.basename || path
         });
 
-        // Add date information
-        if (file) {
+        // Add date information if setting is enabled
+        if (file && this.plugin.settings.showFileHeaderDates) {
             const dateInfo = header.createDiv({ cls: 'task-section-dates' });
             const createdDate = await this.getFileCreationDate(file);
             const modifiedDate = await this.getFileModifiedDate(file);
@@ -432,22 +610,7 @@ export class TaskView extends ItemView {
         // Only render completed tasks section if hide completed is unchecked
         if (!this.hideCompleted) {
             // When hide completed is OFF, filter completed tasks by auto-archive threshold
-            // Only show completed tasks newer than the threshold
-            const threshold = this.plugin.settings.archiveCompletedOlderThan;
-            
-            let recentCompletedTasks = tasks.completed;
-            
-            // If threshold is > 0, filter out old completed tasks
-            if (threshold > 0) {
-                const thresholdDate = new Date();
-                thresholdDate.setDate(thresholdDate.getDate() - threshold);
-                
-                recentCompletedTasks = tasks.completed.filter(task => {
-                    if (!task.completionDate) return true; // Show tasks without completion date
-                    const completedDate = new Date(task.completionDate);
-                    return completedDate >= thresholdDate; // Show tasks completed after threshold
-                });
-            }
+            const recentCompletedTasks = this.filterTasksByArchiveThreshold(tasks.completed);
 
             // Create completed tasks section if there are any recent ones
             if (recentCompletedTasks.length > 0) {
@@ -494,10 +657,11 @@ export class TaskView extends ItemView {
             }
 
             // Save collapse states
-            localStorage.setItem('dynamic-todo-list-collapsed-sections', 
+            localStorage.setItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, 
                 JSON.stringify(Array.from(this.collapsedSections)));
         });
     }
+
 
     private renderTaskItem(container: HTMLElement, task: Task) {
         const taskEl = container.createDiv({ cls: 'task-item' });
@@ -689,21 +853,7 @@ export class TaskView extends ItemView {
         if (!this.hideCompleted) {
             // When hide completed is OFF, filter completed tasks by auto-archive threshold
             // Only show completed tasks newer than the threshold
-            const threshold = this.plugin.settings.archiveCompletedOlderThan;
-            
-            let recentCompletedTasks = completedTasks;
-            
-            // If threshold is > 0, filter out old completed tasks
-            if (threshold > 0) {
-                const thresholdDate = new Date();
-                thresholdDate.setDate(thresholdDate.getDate() - threshold);
-                
-                recentCompletedTasks = completedTasks.filter(task => {
-                    if (!task.completionDate) return true; // Show tasks without completion date
-                    const completedDate = new Date(task.completionDate);
-                    return completedDate >= thresholdDate; // Show tasks completed after threshold
-                });
-            }
+            const recentCompletedTasks = this.filterTasksByArchiveThreshold(completedTasks);
 
             // Handle completed tasks section
             if (recentCompletedTasks.length > 0) {
@@ -823,5 +973,17 @@ export class TaskView extends ItemView {
         if (this.hideCompletedCheckbox) {
             this.hideCompletedCheckbox.checked = this.hideCompleted;
         }
+    }
+
+    async onClose(): Promise<void> {
+        // Clean up caches to prevent memory leaks
+        this.fileStatsCache.clear();
+        this.pendingFileStats.clear();
+        
+        // Clean up existing markdown components
+        this.markdownComponents.forEach(component => component.unload());
+        this.markdownComponents = [];
+        
+        await super.onClose();
     }
 }

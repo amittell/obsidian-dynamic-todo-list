@@ -1,4 +1,4 @@
-import { Plugin, App, WorkspaceLeaf, Notice, TFile } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Notice, TFile } from 'obsidian';
 import { TaskView, TASK_VIEW_TYPE } from './taskView';
 import { TaskProcessor } from './taskProcessor';
 import { DynamicTodoListSettingTab } from './settingsTab';

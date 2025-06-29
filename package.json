@@ -18,7 +18,9 @@
     "builtin-modules": "^3.3.0",
     "esbuild": "^0.25.0",
     "eslint": "^8.47.0",
+    "globals": "^16.2.0",
     "obsidian": "latest",
-    "typescript": "^4.7.4"
+    "typescript": "^4.7.4",
+    "typescript-eslint": "^8.35.0"
   }
 }

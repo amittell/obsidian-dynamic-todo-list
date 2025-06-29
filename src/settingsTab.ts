@@ -107,6 +107,57 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
         // Add data attribute for styling
         archiveSetting.settingEl.setAttribute('data-setting', 'archive-completed');
 
+        // Show file headers setting
+        new Setting(containerEl)
+            .setName('Show file headers')
+            .setDesc('Display file names as section headers in the task list. When disabled, shows a flat list of tasks without file groupings. Example: "Project Tasks > Task 1" vs just "Task 1".')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showFileHeaders)
+                .onChange(async (value) => {
+                    this.plugin.settings.showFileHeaders = value;
+                    await this.plugin.saveSettings();
+                    await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    this.display(); // Re-render settings to show/hide conditional setting
+                }));
+
+        // Show created/modified dates in file headers setting (conditional sub-setting)
+        if (this.plugin.settings.showFileHeaders) {
+            const showDatesSetting = new Setting(containerEl)
+                .setName('Show created / modified dates')
+                .setDesc('When enabled, file headers show creation and modification dates. When disabled, headers show only the file name for a more compact view.')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.showFileHeaderDates)
+                    .onChange(async (value) => {
+                        this.plugin.settings.showFileHeaderDates = value;
+                        await this.plugin.saveSettings();
+                        await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    }));
+            
+            // Style as a sub-setting with indentation
+            showDatesSetting.settingEl.style.marginLeft = '20px';
+            showDatesSetting.settingEl.style.borderLeft = '2px solid var(--background-modifier-border)';
+            showDatesSetting.settingEl.style.paddingLeft = '15px';
+        }
+
+        // Move completed tasks to bottom setting (conditional sub-setting)
+        if (!this.plugin.settings.showFileHeaders) {
+            const moveCompletedSetting = new Setting(containerEl)
+                .setName('Move completed tasks to bottom of list')
+                .setDesc('When enabled, completed tasks automatically appear at the bottom of the flat task list, after all open tasks. Example: "Buy milk" (open) followed by "Done shopping" (completed).')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.moveCompletedTasksToBottom)
+                    .onChange(async (value) => {
+                        this.plugin.settings.moveCompletedTasksToBottom = value;
+                        await this.plugin.saveSettings();
+                        await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    }));
+            
+            // Style as a sub-setting with indentation
+            moveCompletedSetting.settingEl.style.marginLeft = '20px';
+            moveCompletedSetting.settingEl.style.borderLeft = '2px solid var(--background-modifier-border)';
+            moveCompletedSetting.settingEl.style.paddingLeft = '15px';
+        }
+
         // Link Behavior section
         containerEl.createEl('h3', { text: 'Task Link Behavior' });
 
