@@ -974,4 +974,16 @@ export class TaskView extends ItemView {
             this.hideCompletedCheckbox.checked = this.hideCompleted;
         }
     }
+
+    async onClose(): Promise<void> {
+        // Clean up caches to prevent memory leaks
+        this.fileStatsCache.clear();
+        this.pendingFileStats.clear();
+        
+        // Clean up existing markdown components
+        this.markdownComponents.forEach(component => component.unload());
+        this.markdownComponents = [];
+        
+        await super.onClose();
+    }
 }
