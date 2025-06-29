@@ -30,6 +30,7 @@ export class TaskView extends ItemView {
     private hideCompletedLabel: HTMLLabelElement | null = null;
     private hideCompletedCheckbox: HTMLInputElement | null = null;
     private fileStatsCache = new Map<string, {ctime: number, mtime: number, expires: number}>();
+    private pendingFileStats = new Map<string, Promise<{ctime: number, mtime: number} | null>>();
 
     getIsLoading(): boolean {
         return this.isLoading;
@@ -85,19 +86,39 @@ export class TaskView extends ItemView {
             return {ctime: cached.ctime, mtime: cached.mtime};
         }
         
+        // Check if there's already a pending request for this file
+        const pending = this.pendingFileStats.get(file.path);
+        if (pending) {
+            return pending;
+        }
+        
         // Clean up expired entries periodically
         if (this.fileStatsCache.size > 100) {
             this.cleanupExpiredCache();
         }
         
+        // Create new request and cache the promise to prevent race conditions
+        const promise = this.fetchFileStats(file.path, now);
+        this.pendingFileStats.set(file.path, promise);
+        
         try {
-            const stat = await this.app.vault.adapter.stat(file.path);
+            const result = await promise;
+            return result;
+        } finally {
+            // Always clean up the pending request when done
+            this.pendingFileStats.delete(file.path);
+        }
+    }
+
+    private async fetchFileStats(filePath: string, requestTime: number): Promise<{ctime: number, mtime: number} | null> {
+        try {
+            const stat = await this.app.vault.adapter.stat(filePath);
             if (stat) {
                 // Cache for 30 seconds
-                this.fileStatsCache.set(file.path, {
+                this.fileStatsCache.set(filePath, {
                     ctime: stat.ctime,
                     mtime: stat.mtime,
-                    expires: now + 30000
+                    expires: requestTime + 30000
                 });
                 return {ctime: stat.ctime, mtime: stat.mtime};
             }
@@ -120,7 +141,11 @@ export class TaskView extends ItemView {
 
     private getSortValue(): string {
         const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
-        return sortSelect?.value || `${this.processor.settings.sortPreference.field}-${this.processor.settings.sortPreference.direction}`;
+        if (!sortSelect) {
+            console.warn('Sort select element not found, using default sort preference');
+            return `${this.processor.settings.sortPreference.field}-${this.processor.settings.sortPreference.direction}`;
+        }
+        return sortSelect.value || `${this.processor.settings.sortPreference.field}-${this.processor.settings.sortPreference.direction}`;
     }
 
     private getSortedTasks(tasks: Task[]): Task[] {
