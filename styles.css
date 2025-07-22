@@ -742,3 +742,10 @@
     vertical-align: middle;
 }
 
+/* Sub-setting styles */
+.sub-setting {
+    margin-left: 20px;
+    border-left: 2px solid var(--background-modifier-border);
+    padding-left: 15px;
+}
+

@@ -134,9 +134,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     }));
             
             // Style as a sub-setting with indentation
-            showDatesSetting.settingEl.style.marginLeft = '20px';
-            showDatesSetting.settingEl.style.borderLeft = '2px solid var(--background-modifier-border)';
-            showDatesSetting.settingEl.style.paddingLeft = '15px';
+            showDatesSetting.settingEl.addClass('sub-setting');
         }
 
         // Move completed tasks to bottom setting (conditional sub-setting)
@@ -153,9 +151,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     }));
             
             // Style as a sub-setting with indentation
-            moveCompletedSetting.settingEl.style.marginLeft = '20px';
-            moveCompletedSetting.settingEl.style.borderLeft = '2px solid var(--background-modifier-border)';
-            moveCompletedSetting.settingEl.style.paddingLeft = '15px';
+            moveCompletedSetting.settingEl.addClass('sub-setting');
         }
 
         // Link Behavior section

@@ -1,9 +1,9 @@
 {
   "id": "dynamic-todo-list",
   "name": "Dynamic Todo List",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "minAppVersion": "0.15.0",
-  "description": "A dynamic todo list plugin for Obsidian",
+  "description": "Aggregate tasks from notes tagged with #tasks or custom tags into a dynamic sidebar view with real-time updates.",
   "author": "Alex Mittell",
   "isDesktopOnly": false,
   "main": "main.js",

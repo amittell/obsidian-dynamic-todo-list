@@ -1,6 +1,6 @@
 {
   "name": "obsidian-dynamic-todo-list",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A dynamic todo list plugin for Obsidian",
   "main": "main.js",
   "scripts": {
