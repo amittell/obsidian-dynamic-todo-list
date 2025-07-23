@@ -60,15 +60,14 @@ export default class DynamicTodoList extends Plugin {
             name: 'Toggle Task List',
             callback: async () => {
                 await this.toggleView();
-            },
-            hotkeys: [{ modifiers: ['Mod'], key: 'j' }] // Mod is Ctrl on Windows/Linux, Cmd on Mac
+            }
         });
 
         // Set up file watchers to re-index tasks on file modification and deletion
         this.registerEvent(
             this.app.vault.on('modify', async (file) => {
                 // Only process markdown files
-                if (!('extension' in file) || file.extension !== 'md') return;
+                if (!(file instanceof TFile) || file.extension !== 'md') return;
 
                 // Skip processing if the file change was triggered by our own task toggle (within a short time window)
                 const skipFullProcess = this.tasks.some(t =>
@@ -83,7 +82,7 @@ export default class DynamicTodoList extends Plugin {
                 if (existingTasks.length > 0) {
                     // Process file changes in background without blocking the main thread
                     setTimeout(() => {
-                        this.processor.processFile(file as TFile).then(updatedTasks => {
+                        this.processor.processFile(file).then(updatedTasks => {
                             if (updatedTasks.length > 0) {
                                 // Remove old tasks for this file and add new ones
                                 this.tasks = [

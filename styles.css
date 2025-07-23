@@ -579,7 +579,7 @@
 .task-list-loading-progress-inner {
     height: 100%;
     background: var(--interactive-accent);
-    width: 0;
+    width: var(--progress-width, 0);
     transition: width 0.2s ease;
 }
 

@@ -181,8 +181,7 @@ export class TaskView extends ItemView {
         loadingInner.createDiv({ cls: 'task-list-loading-spinner' });
         const progressBar = loadingInner.createDiv({ cls: 'task-list-loading-progress' });
         progressBar.createDiv({ 
-            cls: 'task-list-loading-progress-inner',
-            attr: { style: 'width: 0%' }
+            cls: 'task-list-loading-progress-inner'
         });
         loadingInner.createDiv({
             cls: 'task-list-loading-text',
@@ -363,7 +362,7 @@ export class TaskView extends ItemView {
         const progressText = this.loadingEl.querySelector('.task-list-loading-text') as HTMLElement;
         
         if (progressInner && progressText) {
-            progressInner.style.width = `${percent}%`;
+            progressInner.style.setProperty('--progress-width', `${percent}%`);
             progressText.textContent = `Loading tasks... ${Math.round(percent)}%`;
         }
     }
