@@ -362,7 +362,8 @@ export class TaskView extends ItemView {
         const progressText = this.loadingEl.querySelector('.task-list-loading-text') as HTMLElement;
         
         if (progressInner && progressText) {
-            progressInner.style.setProperty('--progress-width', `${percent}%`);
+            // Use data attribute instead of style manipulation
+            progressInner.setAttribute('data-progress', Math.round(percent).toString());
             progressText.textContent = `Loading tasks... ${Math.round(percent)}%`;
         }
     }

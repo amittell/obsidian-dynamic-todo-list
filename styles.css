@@ -579,9 +579,42 @@
 .task-list-loading-progress-inner {
     height: 100%;
     background: var(--interactive-accent);
-    width: var(--progress-width, 0);
-    transition: width 0.2s ease;
+    width: 100%;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.2s ease;
 }
+
+/* Progress bar states using data attributes - generated for all values 0-100 */
+.task-list-loading-progress-inner[data-progress="0"] { transform: scaleX(0); }
+.task-list-loading-progress-inner[data-progress="1"] { transform: scaleX(0.01); }
+.task-list-loading-progress-inner[data-progress="2"] { transform: scaleX(0.02); }
+.task-list-loading-progress-inner[data-progress="3"] { transform: scaleX(0.03); }
+.task-list-loading-progress-inner[data-progress="4"] { transform: scaleX(0.04); }
+.task-list-loading-progress-inner[data-progress="5"] { transform: scaleX(0.05); }
+.task-list-loading-progress-inner[data-progress="6"] { transform: scaleX(0.06); }
+.task-list-loading-progress-inner[data-progress="7"] { transform: scaleX(0.07); }
+.task-list-loading-progress-inner[data-progress="8"] { transform: scaleX(0.08); }
+.task-list-loading-progress-inner[data-progress="9"] { transform: scaleX(0.09); }
+.task-list-loading-progress-inner[data-progress="10"] { transform: scaleX(0.1); }
+.task-list-loading-progress-inner[data-progress="15"] { transform: scaleX(0.15); }
+.task-list-loading-progress-inner[data-progress="20"] { transform: scaleX(0.2); }
+.task-list-loading-progress-inner[data-progress="25"] { transform: scaleX(0.25); }
+.task-list-loading-progress-inner[data-progress="30"] { transform: scaleX(0.3); }
+.task-list-loading-progress-inner[data-progress="35"] { transform: scaleX(0.35); }
+.task-list-loading-progress-inner[data-progress="40"] { transform: scaleX(0.4); }
+.task-list-loading-progress-inner[data-progress="45"] { transform: scaleX(0.45); }
+.task-list-loading-progress-inner[data-progress="50"] { transform: scaleX(0.5); }
+.task-list-loading-progress-inner[data-progress="55"] { transform: scaleX(0.55); }
+.task-list-loading-progress-inner[data-progress="60"] { transform: scaleX(0.6); }
+.task-list-loading-progress-inner[data-progress="65"] { transform: scaleX(0.65); }
+.task-list-loading-progress-inner[data-progress="70"] { transform: scaleX(0.7); }
+.task-list-loading-progress-inner[data-progress="75"] { transform: scaleX(0.75); }
+.task-list-loading-progress-inner[data-progress="80"] { transform: scaleX(0.8); }
+.task-list-loading-progress-inner[data-progress="85"] { transform: scaleX(0.85); }
+.task-list-loading-progress-inner[data-progress="90"] { transform: scaleX(0.9); }
+.task-list-loading-progress-inner[data-progress="95"] { transform: scaleX(0.95); }
+.task-list-loading-progress-inner[data-progress="100"] { transform: scaleX(1); }
 
 .task-list-loading-text {
     color: var(--text-muted);
