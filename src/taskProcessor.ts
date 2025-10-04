@@ -172,34 +172,33 @@ export class TaskProcessor {
      */
     async toggleTask(task: Task, newState: boolean): Promise<void> {
         try {
-            // Use cachedRead for better performance
-            const content = await this.vault.cachedRead(task.sourceFile);
-            const lines = content.split('\n');
-            let line = lines[task.lineNumber];
-
-            // Prepare the new line content
-            const dateMatch = line.match(/✅ \d{4}-\d{2}-\d{2}$/); // Check for existing completion date
             const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+            const lineNumber = task.lineNumber;
+            
+            // Use Vault.process for background-safe file modifications
+            await this.vault.process(task.sourceFile, (content) => {
+                const lines = content.split('\n');
+                let line = lines[lineNumber];
 
-            if (newState) {
-                // Adding completion - replacing the task prefix with checked task, and adding a date if it isn't already there
-                line = line.replace(/\[ \]/, '[x]') + (!dateMatch ? ` ✅ ${today}` : ''); // Add completion mark and date
-                task.completionDate = dateMatch ? dateMatch[0].substring(2) : today; // update the completion date of task
-            } else {
-                // Removing completion - replacing the task prefix with unchecked, and removing the date string
-                line = line.replace(/\[[xX]\]/, '[ ]').replace(/✅ \d{4}-\d{2}-\d{2}$/, '').trim(); // Remove completion mark and date
-                task.completionDate = null; // update the completion date of task
-            }
+                // Prepare the new line content
+                const dateMatch = line.match(/✅ \d{4}-\d{2}-\d{2}$/); // Check for existing completion date
 
-            lines[task.lineNumber] = line;
+                if (newState) {
+                    // Adding completion - replacing the task prefix with checked task, and adding a date if it isn't already there
+                    line = line.replace(/\[ \]/, '[x]') + (!dateMatch ? ` ✅ ${today}` : ''); // Add completion mark and date
+                    task.completionDate = dateMatch ? dateMatch[0].substring(2) : today; // update the completion date of task
+                } else {
+                    // Removing completion - replacing the task prefix with unchecked, and removing the date string
+                    line = line.replace(/\[[xX]\]/, '[ ]').replace(/✅ \d{4}-\d{2}-\d{2}$/, '').trim(); // Remove completion mark and date
+                    task.completionDate = null; // update the completion date of task
+                }
+
+                lines[lineNumber] = line;
+                return lines.join('\n');
+            });
+            
             task.completed = newState;
             task.lastUpdated = Date.now();
-
-            // Modify file in background
-            this.vault.modify(task.sourceFile, lines.join('\n')).catch(error => {
-                console.error('Error modifying file:', error);
-                throw error; // Re-throw the error to be caught by the caller
-            });
         } catch (error) {
             console.error('Error toggling task:', error);
             throw error; // Re-throw the error to be caught by the caller
@@ -223,8 +222,8 @@ export class TaskProcessor {
 
             // Focus and scroll to the task line
             const view = targetLeaf.view;
-            if (view.getViewType() === 'markdown') {
-                const editor = (view as MarkdownView).editor; // Access the editor with proper type
+            if (view instanceof MarkdownView) {
+                const editor = view.editor; // Access the editor with proper type
                 if (editor) {
                     const pos = { line: task.lineNumber, ch: 0 }; // Cursor position at the start of the line
                     editor.setCursor(pos); // Set the cursor position
