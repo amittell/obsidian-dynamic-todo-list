@@ -1,4 +1,4 @@
-import { TFile, Vault, App, MarkdownView } from 'obsidian';
+import { TFile, Vault, App, MarkdownView, getAllTags } from 'obsidian';
 import { Task, PluginSettings } from './types';
 
 /**
@@ -53,25 +53,18 @@ export class TaskProcessor {
                     return tasks;
                 }
 
-                // Quick check for task identifiers before full processing
-                if (this.settings.taskIdentificationMethod === 'tag' && !content.includes(this.settings.noteTag)) {
-                    return [];
-                }
-
-                const lines = content.split('\n');
-                if (this.settings.taskIdentificationMethod === 'header') {
-                    // Check for a heading that contains the word 'task' (case-insensitive)
-                    let hasTaskHeader = false;
-                    for (let i = 0; i < Math.min(20, lines.length); i++) { // Limit check to first 20 lines
-                        if (lines[i].startsWith('#') && lines[i].toLowerCase().includes('task')) {
-                            hasTaskHeader = true;
-                            break;
-                        }
+                // Check if file matches configured identification method using metadata cache
+                if (this.settings.taskIdentificationMethod === 'tag') {
+                    if (!this.fileHasConfiguredTag(file)) {
+                        return [];
                     }
-                    if (!hasTaskHeader) {
+                } else if (this.settings.taskIdentificationMethod === 'header') {
+                    if (!this.fileHasConfiguredHeader(file)) {
                         return [];
                     }
                 }
+
+                const lines = content.split('\n');
 
 
                 // Process all lines at once since we've already filtered the file
@@ -92,6 +85,36 @@ export class TaskProcessor {
             console.error(`Error processing file ${file.path}:`, error);
             return [];
         }
+    }
+
+    /**
+     * Checks if a file has the configured tag using metadata cache.
+     * @param file - The file to check.
+     * @returns True if the file has the configured tag, false otherwise.
+     */
+    private fileHasConfiguredTag(file: TFile): boolean {
+        if (!this.app) return false;
+        
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (!cache) return false;
+        
+        const tags = (getAllTags(cache) ?? []).map(t => t.replace(/^#/, '').toLowerCase());
+        const configured = this.settings.noteTag.replace(/^#/, '').toLowerCase();
+        return tags.includes(configured);
+    }
+
+    /**
+     * Checks if a file has the configured header using metadata cache.
+     * @param file - The file to check.
+     * @returns True if the file has a header containing 'task', false otherwise.
+     */
+    private fileHasConfiguredHeader(file: TFile): boolean {
+        if (!this.app) return false;
+        
+        const cache = this.app.metadataCache.getFileCache(file);
+        const headings = cache?.headings ?? [];
+        // Check for any heading that contains the word 'task' (case-insensitive)
+        return headings.some(h => h.heading.trim().toLowerCase().includes('task'));
     }
 
     /**
