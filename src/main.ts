@@ -34,7 +34,7 @@ export default class DynamicTodoList extends Plugin {
         });
 
         // Add UI elements - ribbon icon for toggling the view
-        this.addRibbonIcon('checkbox-glyph', 'Dynamic Todo List', async () => {
+        this.addRibbonIcon('checkbox-glyph', 'Dynamic todo list', async () => {
             await this.toggleView();
         });
 
@@ -49,10 +49,10 @@ export default class DynamicTodoList extends Plugin {
             await this.activateView();
         }
 
-        // Add command to toggle the view, with a hotkey
+        // Add command to toggle the view
         this.addCommand({
             id: 'show-dynamic-task-list',
-            name: 'Toggle Task List',
+            name: 'Toggle task list',
             callback: async () => {
                 await this.toggleView();
             }

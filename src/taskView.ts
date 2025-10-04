@@ -49,7 +49,7 @@ export class TaskView extends ItemView {
     }
 
     getDisplayText(): string {
-        return 'Dynamic Todo List';
+        return 'Dynamic todo list';
     }
 
     getIcon(): string {
@@ -170,7 +170,7 @@ export class TaskView extends ItemView {
 
         // Create all UI elements
         const headerSection = contentEl.createDiv({ cls: 'task-list-header-section' });
-        headerSection.createEl('h2', { text: 'Dynamic Todo List', cls: 'task-list-header' });
+        headerSection.createEl('h2', { text: 'Dynamic todo list', cls: 'task-list-header' });
         const controlsSection = headerSection.createDiv({ cls: 'task-controls' });
         this.taskListContainer = contentEl.createDiv({ cls: 'task-list' });
         
@@ -227,10 +227,10 @@ export class TaskView extends ItemView {
         const sortSelect = firstRow.createEl('select', { cls: 'task-sort' });
         sortSelect.createEl('option', { text: 'Name (A to Z)', value: 'name-asc' });
         sortSelect.createEl('option', { text: 'Name (Z to A)', value: 'name-desc' });
-        sortSelect.createEl('option', { text: 'Created (Newest)', value: 'created-desc' });
-        sortSelect.createEl('option', { text: 'Created (Oldest)', value: 'created-asc' });
-        sortSelect.createEl('option', { text: 'Modified (Newest)', value: 'modified-desc' });
-        sortSelect.createEl('option', { text: 'Modified (Oldest)', value: 'modified-asc' });
+        sortSelect.createEl('option', { text: 'Created (newest)', value: 'created-desc' });
+        sortSelect.createEl('option', { text: 'Created (oldest)', value: 'created-asc' });
+        sortSelect.createEl('option', { text: 'Modified (newest)', value: 'modified-desc' });
+        sortSelect.createEl('option', { text: 'Modified (oldest)', value: 'modified-asc' });
 
         // Get saved sort preference
         const savedSort = localStorage.getItem(TaskView.STORAGE_KEYS.SORT) || 
@@ -482,7 +482,7 @@ export class TaskView extends ItemView {
             const toggleIcon = header.createDiv({ cls: 'completed-notes-toggle' });
             
             header.createEl('h3', {
-                text: `Completed Notes (${Object.keys(completedNotes).length})`
+                text: `Completed notes (${Object.keys(completedNotes).length})`
             });
             
             // Get saved collapse state for completed notes section
@@ -622,7 +622,7 @@ export class TaskView extends ItemView {
                 });
                 
                 completedHeader.createEl('span', {
-                    text: `Completed Tasks (${recentCompletedTasks.length})`
+                    text: `Completed tasks (${recentCompletedTasks.length})`
                 });
                 
                 const completedContent = completedSection.createDiv({
@@ -869,7 +869,7 @@ export class TaskView extends ItemView {
                     });
                     
                     completedHeader.createEl('span', {
-                        text: `Completed Tasks (${recentCompletedTasks.length})`
+                        text: `Completed tasks (${recentCompletedTasks.length})`
                     });
                     
                     completedContent = completedSection.createDiv({
@@ -890,7 +890,7 @@ export class TaskView extends ItemView {
                     // Update the completed tasks counter
                     const counter = completedSection.querySelector('span');
                     if (counter) {
-                        counter.textContent = `Completed Tasks (${recentCompletedTasks.length})`;
+                        counter.textContent = `Completed tasks (${recentCompletedTasks.length})`;
                     }
                 }
 
