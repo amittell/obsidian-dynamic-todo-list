@@ -13,7 +13,6 @@ export default class DynamicTodoList extends Plugin {
     settings: PluginSettings;
     private tasks: Task[] = [];
     private processor: TaskProcessor;
-    private view: TaskView | null = null;
     private reindexingInProgress = false;
     private initialLoadComplete = false;
 
@@ -42,10 +41,7 @@ export default class DynamicTodoList extends Plugin {
         // Register the view
         this.registerView(
             TASK_VIEW_TYPE,
-            (leaf: WorkspaceLeaf) => {
-                this.view = new TaskView(leaf, [], this.processor, this); // Pass the plugin instance
-                return this.view;
-            }
+            (leaf: WorkspaceLeaf) => new TaskView(leaf, [], this.processor, this)
         );
 
         // Activate view if configured in settings
@@ -93,9 +89,12 @@ export default class DynamicTodoList extends Plugin {
                                 }));
 
                                 // Update the view if it's open and not currently loading
-                                if (this.view && !this.view.getIsLoading()) {
-                                    this.view.updateTasks(this.tasks);
-                                }
+                                const views = this.getTaskViews();
+                                views.forEach(view => {
+                                    if (!view.getIsLoading()) {
+                                        view.updateTasks(this.tasks);
+                                    }
+                                });
                             }
                         }).catch(error => {
                             console.error('Error processing file changes:', error);
@@ -208,9 +207,12 @@ export default class DynamicTodoList extends Plugin {
             this.reindexingInProgress = true;
             const files = this.app.vault.getMarkdownFiles(); // Get all markdown files
 
-            if (isInitialLoad && this.view) {
-                this.view.setLoading(true); // Show loading indicator
-                this.view.updateLoadingProgress(0); // Initialize progress
+            const views = this.getTaskViews();
+            if (isInitialLoad && views.length > 0) {
+                views.forEach(view => {
+                    view.setLoading(true); // Show loading indicator
+                    view.updateLoadingProgress(0); // Initialize progress
+                });
             }
 
             const newTasks: Task[] = [];
@@ -221,37 +223,51 @@ export default class DynamicTodoList extends Plugin {
                 const tasks = await this.processor.processFile(files[i]); // Process each file
                 newTasks.push(...tasks); // Add the tasks to the list
 
-                if (this.view) {
+                if (views.length > 0) {
                     const progress = Math.round((i + 1) / totalFiles * 100); // Calculate progress
-                    this.view.updateLoadingProgress(progress);  // Update loading progress
+                    views.forEach(view => view.updateLoadingProgress(progress));  // Update loading progress
                 }
             }
 
             this.tasks = newTasks; // Update the task list
             this.initialLoadComplete = true;
 
-            if (this.view) {
-                this.view.updateTasks(this.tasks); // Update the view with the new tasks
-                this.view.setLoading(false); // Hide loading indicator
-            }
+            views.forEach(view => {
+                view.updateTasks(this.tasks); // Update the view with the new tasks
+                view.setLoading(false); // Hide loading indicator
+            });
         } catch (error) {
             console.error('Error indexing tasks:', error);
             new Notice('Error updating tasks'); // Display error message to the user
-            if (this.view) {
-                this.view.setLoading(false); // Ensure loading indicator is hidden on error
-            }
+            this.getTaskViews().forEach(view => {
+                view.setLoading(false); // Ensure loading indicator is hidden on error
+            });
         } finally {
             this.reindexingInProgress = false; // Allow reindexing after completion or error
         }
     }
 
     /**
-     * Refreshes the task view if it's not currently loading.
+     * Gets all active TaskView instances.
+     * @returns An array of TaskView instances.
+     */
+    private getTaskViews(): TaskView[] {
+        const leaves = this.app.workspace.getLeavesOfType(TASK_VIEW_TYPE);
+        return leaves
+            .map(leaf => leaf.view)
+            .filter((view): view is TaskView => view instanceof TaskView);
+    }
+
+    /**
+     * Refreshes all task views if they're not currently loading.
      */
     async refreshTaskView(): Promise<void> {
-        if (this.view && !this.view.getIsLoading()) {
-            this.view.updateTasks(this.tasks);
-        }
+        const views = this.getTaskViews();
+        views.forEach(view => {
+            if (!view.getIsLoading()) {
+                view.updateTasks(this.tasks);
+            }
+        });
     }
 
     /**
