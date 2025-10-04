@@ -280,7 +280,6 @@ export default class DynamicTodoList extends Plugin {
      * Called when the plugin is unloaded.  Handles cleanup.
      */
     async onunload() {
-        // Save current state before unloading
-        await this.saveData(this.settings);
+        // Cleanup will be handled automatically
     }
 }
