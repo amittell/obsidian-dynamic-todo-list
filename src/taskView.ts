@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile, MarkdownRenderer, MarkdownView, Component, parseLinktext } from 'obsidian';
+import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile, MarkdownRenderer, MarkdownView, Component, parseLinktext, debounce } from 'obsidian';
 import { Task } from './types';
 import { TaskProcessor } from './taskProcessor';
 import DynamicTodoList from './main';
@@ -22,7 +22,6 @@ export class TaskView extends ItemView {
     private taskListContainer: HTMLElement | null = null;
     private collapsedSections: Set<string> = new Set();
     private searchInput: HTMLInputElement | null = null;
-    private debounceTimeout: NodeJS.Timeout | null = null;
     private loadingEl: HTMLElement | null = null;
     private isLoading = true;
     private markdownComponents: Component[] = [];
@@ -215,14 +214,13 @@ export class TaskView extends ItemView {
             }
         });
 
+        const debouncedSearch = debounce(() => {
+            localStorage.setItem(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
+            this.renderTaskList();
+        }, 200, true);
+        
         this.searchInput.addEventListener('input', () => {
-            if (this.debounceTimeout) {
-                clearTimeout(this.debounceTimeout);
-            }
-            this.debounceTimeout = setTimeout(() => {
-                localStorage.setItem(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
-                this.renderTaskList();
-            }, 200);
+            debouncedSearch();
         });
 
         // Sort dropdown

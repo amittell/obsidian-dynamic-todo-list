@@ -1,9 +1,8 @@
-import { Plugin, WorkspaceLeaf, Notice, TFile } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Notice, TFile, debounce } from 'obsidian';
 import { TaskView, TASK_VIEW_TYPE } from './taskView';
 import { TaskProcessor } from './taskProcessor';
 import { DynamicTodoListSettingTab } from './settingsTab';
 import { Task, PluginSettings, DEFAULT_SETTINGS } from './types';
-import { debounce } from '../src/utils'; // Using explicit relative path
 
 /**
  * Main plugin class for the Dynamic Todo List plugin.
