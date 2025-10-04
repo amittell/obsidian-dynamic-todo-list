@@ -488,15 +488,15 @@ export class TaskView extends ItemView {
             // Get saved collapse state for completed notes section
             const isCollapsed = localStorage.getItem(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED) === 'true';
             const content = completedNotesSection.createDiv({ 
-                cls: `completed-notes-content ${isCollapsed ? 'collapsed' : ''}` 
+                cls: `completed-notes-content ${isCollapsed ? 'dtl-collapsed' : ''}` 
             });
             
             setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
             
             // Add click handler for toggling completed notes section
             header.addEventListener('click', () => {
-                const willCollapse = !content.hasClass('collapsed');
-                content.toggleClass('collapsed', willCollapse);
+                const willCollapse = !content.hasClass('dtl-collapsed');
+                content.toggleClass('dtl-collapsed', willCollapse);
                 setIcon(toggleIcon, willCollapse ? 'chevron-right' : 'chevron-down');
                 localStorage.setItem(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED, willCollapse.toString());
             });
@@ -596,7 +596,7 @@ export class TaskView extends ItemView {
         setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
         
         const content = section.createDiv({ 
-            cls: `task-section-content ${isCollapsed ? 'collapsed' : ''}`
+            cls: `task-section-content ${isCollapsed ? 'dtl-collapsed' : ''}`
         });
 
         // Render open tasks first
@@ -635,8 +635,8 @@ export class TaskView extends ItemView {
                 
                 completedHeader.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const isCollapsed = completedContent.hasClass('collapsed');
-                    completedContent.toggleClass('collapsed', !isCollapsed);
+                    const isCollapsed = completedContent.hasClass('dtl-collapsed');
+                    completedContent.toggleClass('dtl-collapsed', !isCollapsed);
                     setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
                 });
             }
@@ -644,8 +644,8 @@ export class TaskView extends ItemView {
 
         // Set up section collapse functionality
         header.addEventListener('click', () => {
-            const isCollapsed = !content.hasClass('collapsed');
-            content.toggleClass('collapsed', isCollapsed);
+            const isCollapsed = !content.hasClass('dtl-collapsed');
+            content.toggleClass('dtl-collapsed', isCollapsed);
             setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
             
             if (isCollapsed) {
@@ -686,7 +686,7 @@ export class TaskView extends ItemView {
             // Process links after rendering
             taskClickWrapper.findAll('.internal-link').forEach(link => {
                 if (!this.processor.settings.enableWikiLinks) {
-                    link.addClass('disabled-link');
+                    link.addClass('dtl-disabled-link');
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -725,7 +725,7 @@ export class TaskView extends ItemView {
 
             if (!this.processor.settings.enableUrlLinks) {
                 taskClickWrapper.findAll('a:not(.internal-link)').forEach(link => {
-                    link.addClass('disabled-link');
+                    link.addClass('dtl-disabled-link');
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -880,8 +880,8 @@ export class TaskView extends ItemView {
                     
                     completedHeader.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        const isCollapsed = completedContent.hasClass('collapsed');
-                        completedContent.toggleClass('collapsed', !isCollapsed);
+                        const isCollapsed = completedContent.hasClass('dtl-collapsed');
+                        completedContent.toggleClass('dtl-collapsed', !isCollapsed);
                         setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
                     });
 

@@ -132,7 +132,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     }));
             
             // Style as a sub-setting with indentation
-            showDatesSetting.settingEl.addClass('sub-setting');
+            showDatesSetting.settingEl.addClass('dtl-sub-setting');
         }
 
         // Move completed tasks to bottom setting (conditional sub-setting)
@@ -149,7 +149,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     }));
             
             // Style as a sub-setting with indentation
-            moveCompletedSetting.settingEl.addClass('sub-setting');
+            moveCompletedSetting.settingEl.addClass('dtl-sub-setting');
         }
 
         // Link Behavior section
