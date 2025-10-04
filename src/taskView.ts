@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile, MarkdownRenderer, MarkdownView, Component, parseLinktext } from 'obsidian';
+import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile, MarkdownRenderer, MarkdownView, Component, parseLinktext, debounce } from 'obsidian';
 import { Task } from './types';
 import { TaskProcessor } from './taskProcessor';
 import DynamicTodoList from './main';
@@ -22,7 +22,6 @@ export class TaskView extends ItemView {
     private taskListContainer: HTMLElement | null = null;
     private collapsedSections: Set<string> = new Set();
     private searchInput: HTMLInputElement | null = null;
-    private debounceTimeout: NodeJS.Timeout | null = null;
     private loadingEl: HTMLElement | null = null;
     private isLoading = true;
     private markdownComponents: Component[] = [];
@@ -50,7 +49,7 @@ export class TaskView extends ItemView {
     }
 
     getDisplayText(): string {
-        return 'Dynamic Todo List';
+        return 'Dynamic todo list';
     }
 
     getIcon(): string {
@@ -171,7 +170,7 @@ export class TaskView extends ItemView {
 
         // Create all UI elements
         const headerSection = contentEl.createDiv({ cls: 'task-list-header-section' });
-        headerSection.createEl('h2', { text: 'Dynamic Todo List', cls: 'task-list-header' });
+        headerSection.createEl('h2', { text: 'Dynamic todo list', cls: 'task-list-header' });
         const controlsSection = headerSection.createDiv({ cls: 'task-controls' });
         this.taskListContainer = contentEl.createDiv({ cls: 'task-list' });
         
@@ -215,24 +214,23 @@ export class TaskView extends ItemView {
             }
         });
 
+        const debouncedSearch = debounce(() => {
+            localStorage.setItem(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
+            this.renderTaskList();
+        }, 200, true);
+        
         this.searchInput.addEventListener('input', () => {
-            if (this.debounceTimeout) {
-                clearTimeout(this.debounceTimeout);
-            }
-            this.debounceTimeout = setTimeout(() => {
-                localStorage.setItem(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
-                this.renderTaskList();
-            }, 200);
+            debouncedSearch();
         });
 
         // Sort dropdown
         const sortSelect = firstRow.createEl('select', { cls: 'task-sort' });
         sortSelect.createEl('option', { text: 'Name (A to Z)', value: 'name-asc' });
         sortSelect.createEl('option', { text: 'Name (Z to A)', value: 'name-desc' });
-        sortSelect.createEl('option', { text: 'Created (Newest)', value: 'created-desc' });
-        sortSelect.createEl('option', { text: 'Created (Oldest)', value: 'created-asc' });
-        sortSelect.createEl('option', { text: 'Modified (Newest)', value: 'modified-desc' });
-        sortSelect.createEl('option', { text: 'Modified (Oldest)', value: 'modified-asc' });
+        sortSelect.createEl('option', { text: 'Created (newest)', value: 'created-desc' });
+        sortSelect.createEl('option', { text: 'Created (oldest)', value: 'created-asc' });
+        sortSelect.createEl('option', { text: 'Modified (newest)', value: 'modified-desc' });
+        sortSelect.createEl('option', { text: 'Modified (oldest)', value: 'modified-asc' });
 
         // Get saved sort preference
         const savedSort = localStorage.getItem(TaskView.STORAGE_KEYS.SORT) || 
@@ -484,21 +482,21 @@ export class TaskView extends ItemView {
             const toggleIcon = header.createDiv({ cls: 'completed-notes-toggle' });
             
             header.createEl('h3', {
-                text: `Completed Notes (${Object.keys(completedNotes).length})`
+                text: `Completed notes (${Object.keys(completedNotes).length})`
             });
             
             // Get saved collapse state for completed notes section
             const isCollapsed = localStorage.getItem(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED) === 'true';
             const content = completedNotesSection.createDiv({ 
-                cls: `completed-notes-content ${isCollapsed ? 'collapsed' : ''}` 
+                cls: `completed-notes-content ${isCollapsed ? 'dtl-collapsed' : ''}` 
             });
             
             setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
             
             // Add click handler for toggling completed notes section
             header.addEventListener('click', () => {
-                const willCollapse = !content.hasClass('collapsed');
-                content.toggleClass('collapsed', willCollapse);
+                const willCollapse = !content.hasClass('dtl-collapsed');
+                content.toggleClass('dtl-collapsed', willCollapse);
                 setIcon(toggleIcon, willCollapse ? 'chevron-right' : 'chevron-down');
                 localStorage.setItem(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED, willCollapse.toString());
             });
@@ -598,7 +596,7 @@ export class TaskView extends ItemView {
         setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
         
         const content = section.createDiv({ 
-            cls: `task-section-content ${isCollapsed ? 'collapsed' : ''}`
+            cls: `task-section-content ${isCollapsed ? 'dtl-collapsed' : ''}`
         });
 
         // Render open tasks first
@@ -624,7 +622,7 @@ export class TaskView extends ItemView {
                 });
                 
                 completedHeader.createEl('span', {
-                    text: `Completed Tasks (${recentCompletedTasks.length})`
+                    text: `Completed tasks (${recentCompletedTasks.length})`
                 });
                 
                 const completedContent = completedSection.createDiv({
@@ -637,8 +635,8 @@ export class TaskView extends ItemView {
                 
                 completedHeader.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const isCollapsed = completedContent.hasClass('collapsed');
-                    completedContent.toggleClass('collapsed', !isCollapsed);
+                    const isCollapsed = completedContent.hasClass('dtl-collapsed');
+                    completedContent.toggleClass('dtl-collapsed', !isCollapsed);
                     setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
                 });
             }
@@ -646,8 +644,8 @@ export class TaskView extends ItemView {
 
         // Set up section collapse functionality
         header.addEventListener('click', () => {
-            const isCollapsed = !content.hasClass('collapsed');
-            content.toggleClass('collapsed', isCollapsed);
+            const isCollapsed = !content.hasClass('dtl-collapsed');
+            content.toggleClass('dtl-collapsed', isCollapsed);
             setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
             
             if (isCollapsed) {
@@ -688,7 +686,7 @@ export class TaskView extends ItemView {
             // Process links after rendering
             taskClickWrapper.findAll('.internal-link').forEach(link => {
                 if (!this.processor.settings.enableWikiLinks) {
-                    link.addClass('disabled-link');
+                    link.addClass('dtl-disabled-link');
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -727,7 +725,7 @@ export class TaskView extends ItemView {
 
             if (!this.processor.settings.enableUrlLinks) {
                 taskClickWrapper.findAll('a:not(.internal-link)').forEach(link => {
-                    link.addClass('disabled-link');
+                    link.addClass('dtl-disabled-link');
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -871,7 +869,7 @@ export class TaskView extends ItemView {
                     });
                     
                     completedHeader.createEl('span', {
-                        text: `Completed Tasks (${recentCompletedTasks.length})`
+                        text: `Completed tasks (${recentCompletedTasks.length})`
                     });
                     
                     completedContent = completedSection.createDiv({
@@ -882,8 +880,8 @@ export class TaskView extends ItemView {
                     
                     completedHeader.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        const isCollapsed = completedContent.hasClass('collapsed');
-                        completedContent.toggleClass('collapsed', !isCollapsed);
+                        const isCollapsed = completedContent.hasClass('dtl-collapsed');
+                        completedContent.toggleClass('dtl-collapsed', !isCollapsed);
                         setIcon(completedToggle, !isCollapsed ? 'chevron-right' : 'chevron-down');
                     });
 
@@ -892,7 +890,7 @@ export class TaskView extends ItemView {
                     // Update the completed tasks counter
                     const counter = completedSection.querySelector('span');
                     if (counter) {
-                        counter.textContent = `Completed Tasks (${recentCompletedTasks.length})`;
+                        counter.textContent = `Completed tasks (${recentCompletedTasks.length})`;
                     }
                 }
 

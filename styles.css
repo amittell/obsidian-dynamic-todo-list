@@ -1,25 +1,25 @@
-.hotkey-setting button.capturing-hotkey {
+.dtl-hotkey-setting button.dtl-capturing-hotkey {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
 }
 
-.hotkey-setting .setting-item-control {
+.dtl-hotkey-setting .setting-item-control {
     display: flex;
     gap: 8px;
 }
 
-.hotkey-setting button:not(.clickable-icon) {
+.dtl-hotkey-setting button:not(.dtl-clickable-icon) {
     min-width: 140px;
 }
 
 /* Make the icons more visible */
-.hotkey-setting .clickable-icon {
+.dtl-hotkey-setting .dtl-clickable-icon {
     color: var(--text-muted);
     opacity: 0.8;
     transition: all 0.2s ease;
 }
 
-.hotkey-setting .clickable-icon:hover {
+.dtl-hotkey-setting .dtl-clickable-icon:hover {
     color: var(--text-normal);
     opacity: 1;
 }
@@ -165,7 +165,7 @@
     transition: all 0.3s ease;
 }
 
-.task-section-content.collapsed {
+.task-section-content.dtl-collapsed {
     max-height: 0;
     opacity: 0;
     padding: 0;
@@ -229,17 +229,17 @@
 }
 
 /* Style wiki-links to match Obsidian's default styling */
-.task-text .internal-link {
+.task-text .dtl-internal-link {
     color: var(--link-color);
     text-decoration: none;
 }
 
-.task-text .internal-link:hover {
+.task-text .dtl-internal-link:hover {
     text-decoration: underline;
 }
 
 /* Ensure links are properly interactive */
-.task-text .internal-link:not(.disabled-link) {
+.task-text .dtl-internal-link:not(.dtl-disabled-link) {
     color: var(--link-color);
     text-decoration: none;
     cursor: pointer;
@@ -247,17 +247,17 @@
     position: relative;
 }
 
-.task-text .internal-link:not(.disabled-link):hover {
+.task-text .dtl-internal-link:not(.dtl-disabled-link):hover {
     text-decoration: underline;
 }
 
 /* Remove pointer-events from disabled links */
-.task-text .internal-link.disabled-link {
+.task-text .dtl-internal-link.dtl-disabled-link {
     pointer-events: none;
 }
 
 /* Preserve URL link behavior */
-.task-text a:not(.internal-link):not(.disabled-link) {
+.task-text a:not(.dtl-internal-link):not(.dtl-disabled-link) {
     z-index: 3;
     position: relative;
 }
@@ -295,7 +295,7 @@
     padding: 8px 0;
 }
 
-.completed-tasks-content.collapsed {
+.completed-tasks-content.dtl-collapsed {
     max-height: 0;
     opacity: 0;
     padding: 0;
@@ -331,12 +331,12 @@
 }
 
 /* Task Navigation */
-.task-text.clickable {
+.task-text.dtl-clickable {
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
-.task-text.clickable:hover {
+.task-text.dtl-clickable:hover {
     background-color: var(--background-modifier-hover);
     text-decoration: underline;
     color: var(--text-accent);
@@ -421,7 +421,7 @@
     color: var(--text-normal);
 }
 
-.completed-tasks-content.collapsed {
+.completed-tasks-content.dtl-collapsed {
     display: none;
 }
 
@@ -450,12 +450,12 @@
     color: var(--text-normal);
 }
 
-.task-section-content.collapsed {
+.task-section-content.dtl-collapsed {
     display: none;
 }
 
 /* Settings button style overrides */
-.setting-item-control button:not(.clickable-icon) {
+.setting-item-control button:not(.dtl-clickable-icon) {
     font-size: 14px;
     padding: 4px 8px;
     height: auto;
@@ -464,22 +464,22 @@
     background-color: var(--interactive-normal);
 }
 
-.setting-item-control button:not(.clickable-icon):hover {
+.setting-item-control button:not(.dtl-clickable-icon):hover {
     background-color: var(--interactive-hover);
 }
 
-.setting-item-control button.capturing-hotkey:hover {
+.setting-item-control button.dtl-capturing-hotkey:hover {
     background-color: var(--interactive-accent);
 }
 
 /* Icon button improvements */
-.clickable-icon {
+.dtl-clickable-icon {
     padding: 4px;
     border-radius: 4px;
     transition: all 0.2s ease;
 }
 
-.clickable-icon:hover {
+.dtl-clickable-icon:hover {
     background-color: var(--interactive-hover);
 }
 
@@ -509,7 +509,7 @@
     color: var(--text-normal);
 }
 
-.completed-notes-content.collapsed {
+.completed-notes-content.dtl-collapsed {
     display: none;
 }
 
@@ -649,52 +649,52 @@
 }
 
 /* Preserve Obsidian's native link handling */
-.task-text .internal-link:not(.disabled-link) {
+.task-text .dtl-internal-link:not(.dtl-disabled-link) {
     color: var(--link-color);
     text-decoration: none;
 }
 
-.task-text .internal-link:not(.disabled-link):hover {
+.task-text .dtl-internal-link:not(.dtl-disabled-link):hover {
     text-decoration: underline;
 }
 
 /* Disabled link styling */
-.task-text .internal-link.disabled-link {
+.task-text .dtl-internal-link.dtl-disabled-link {
     color: inherit;
     cursor: pointer;
     text-decoration: none;
 }
 
 /* Ensure proper link layering */
-.task-text a:not(.disabled-link) {
+.task-text a:not(.dtl-disabled-link) {
     position: relative;
     z-index: 2;
 }
 
 /* Ensure proper link interaction when wiki-links are enabled */
-.wiki-links-enabled .internal-link {
+.dtl-wiki-links-enabled .dtl-internal-link {
     pointer-events: auto !important;
     cursor: pointer !important;
 }
 
-.task-text a.disabled-link {
+.task-text a.dtl-disabled-link {
     color: inherit;
     cursor: pointer;
     text-decoration: none;
     pointer-events: none;
 }
 
-.task-text a.disabled-link:hover {
+.task-text a.dtl-disabled-link:hover {
     color: var(--text-accent);
 }
 
 /* Add specific hover styles for wiki-links */
-.wiki-links-enabled .internal-link {
+.dtl-wiki-links-enabled .dtl-internal-link {
     color: var(--link-color);
     text-decoration: none;
 }
 
-.wiki-links-enabled .internal-link:hover {
+.dtl-wiki-links-enabled .dtl-internal-link:hover {
     text-decoration: underline;
     cursor: pointer;
 }
@@ -760,7 +760,7 @@
 }
 
 /* Info indicator for settings relationships */
-.settings-info-indicator {
+.dtl-settings-info-indicator {
     display: inline-block;
     width: 14px;
     height: 14px;
@@ -776,7 +776,7 @@
 }
 
 /* Sub-setting styles */
-.sub-setting {
+.dtl-sub-setting {
     margin-left: 20px;
     border-left: 2px solid var(--background-modifier-border);
     padding-left: 15px;

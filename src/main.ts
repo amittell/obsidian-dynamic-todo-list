@@ -1,9 +1,8 @@
-import { Plugin, WorkspaceLeaf, Notice, TFile } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Notice, TFile, debounce } from 'obsidian';
 import { TaskView, TASK_VIEW_TYPE } from './taskView';
 import { TaskProcessor } from './taskProcessor';
 import { DynamicTodoListSettingTab } from './settingsTab';
 import { Task, PluginSettings, DEFAULT_SETTINGS } from './types';
-import { debounce } from '../src/utils'; // Using explicit relative path
 
 /**
  * Main plugin class for the Dynamic Todo List plugin.
@@ -14,7 +13,6 @@ export default class DynamicTodoList extends Plugin {
     settings: PluginSettings;
     private tasks: Task[] = [];
     private processor: TaskProcessor;
-    private view: TaskView | null = null;
     private reindexingInProgress = false;
     private initialLoadComplete = false;
 
@@ -36,17 +34,14 @@ export default class DynamicTodoList extends Plugin {
         });
 
         // Add UI elements - ribbon icon for toggling the view
-        this.addRibbonIcon('checkbox-glyph', 'Dynamic Todo List', async () => {
+        this.addRibbonIcon('checkbox-glyph', 'Dynamic todo list', async () => {
             await this.toggleView();
         });
 
         // Register the view
         this.registerView(
             TASK_VIEW_TYPE,
-            (leaf: WorkspaceLeaf) => {
-                this.view = new TaskView(leaf, [], this.processor, this); // Pass the plugin instance
-                return this.view;
-            }
+            (leaf: WorkspaceLeaf) => new TaskView(leaf, [], this.processor, this)
         );
 
         // Activate view if configured in settings
@@ -54,10 +49,10 @@ export default class DynamicTodoList extends Plugin {
             await this.activateView();
         }
 
-        // Add command to toggle the view, with a hotkey
+        // Add command to toggle the view
         this.addCommand({
             id: 'show-dynamic-task-list',
-            name: 'Toggle Task List',
+            name: 'Toggle task list',
             callback: async () => {
                 await this.toggleView();
             }
@@ -94,9 +89,12 @@ export default class DynamicTodoList extends Plugin {
                                 }));
 
                                 // Update the view if it's open and not currently loading
-                                if (this.view && !this.view.getIsLoading()) {
-                                    this.view.updateTasks(this.tasks);
-                                }
+                                const views = this.getTaskViews();
+                                views.forEach(view => {
+                                    if (!view.getIsLoading()) {
+                                        view.updateTasks(this.tasks);
+                                    }
+                                });
                             }
                         }).catch(error => {
                             console.error('Error processing file changes:', error);
@@ -209,9 +207,12 @@ export default class DynamicTodoList extends Plugin {
             this.reindexingInProgress = true;
             const files = this.app.vault.getMarkdownFiles(); // Get all markdown files
 
-            if (isInitialLoad && this.view) {
-                this.view.setLoading(true); // Show loading indicator
-                this.view.updateLoadingProgress(0); // Initialize progress
+            const views = this.getTaskViews();
+            if (isInitialLoad && views.length > 0) {
+                views.forEach(view => {
+                    view.setLoading(true); // Show loading indicator
+                    view.updateLoadingProgress(0); // Initialize progress
+                });
             }
 
             const newTasks: Task[] = [];
@@ -222,37 +223,51 @@ export default class DynamicTodoList extends Plugin {
                 const tasks = await this.processor.processFile(files[i]); // Process each file
                 newTasks.push(...tasks); // Add the tasks to the list
 
-                if (this.view) {
+                if (views.length > 0) {
                     const progress = Math.round((i + 1) / totalFiles * 100); // Calculate progress
-                    this.view.updateLoadingProgress(progress);  // Update loading progress
+                    views.forEach(view => view.updateLoadingProgress(progress));  // Update loading progress
                 }
             }
 
             this.tasks = newTasks; // Update the task list
             this.initialLoadComplete = true;
 
-            if (this.view) {
-                this.view.updateTasks(this.tasks); // Update the view with the new tasks
-                this.view.setLoading(false); // Hide loading indicator
-            }
+            views.forEach(view => {
+                view.updateTasks(this.tasks); // Update the view with the new tasks
+                view.setLoading(false); // Hide loading indicator
+            });
         } catch (error) {
             console.error('Error indexing tasks:', error);
             new Notice('Error updating tasks'); // Display error message to the user
-            if (this.view) {
-                this.view.setLoading(false); // Ensure loading indicator is hidden on error
-            }
+            this.getTaskViews().forEach(view => {
+                view.setLoading(false); // Ensure loading indicator is hidden on error
+            });
         } finally {
             this.reindexingInProgress = false; // Allow reindexing after completion or error
         }
     }
 
     /**
-     * Refreshes the task view if it's not currently loading.
+     * Gets all active TaskView instances.
+     * @returns An array of TaskView instances.
+     */
+    private getTaskViews(): TaskView[] {
+        const leaves = this.app.workspace.getLeavesOfType(TASK_VIEW_TYPE);
+        return leaves
+            .map(leaf => leaf.view)
+            .filter((view): view is TaskView => view instanceof TaskView);
+    }
+
+    /**
+     * Refreshes all task views if they're not currently loading.
      */
     async refreshTaskView(): Promise<void> {
-        if (this.view && !this.view.getIsLoading()) {
-            this.view.updateTasks(this.tasks);
-        }
+        const views = this.getTaskViews();
+        views.forEach(view => {
+            if (!view.getIsLoading()) {
+                view.updateTasks(this.tasks);
+            }
+        });
     }
 
     /**
@@ -280,7 +295,6 @@ export default class DynamicTodoList extends Plugin {
      * Called when the plugin is unloaded.  Handles cleanup.
      */
     async onunload() {
-        // Save current state before unloading
-        await this.saveData(this.settings);
+        // Cleanup will be handled automatically
     }
 }

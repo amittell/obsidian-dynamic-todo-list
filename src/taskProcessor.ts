@@ -1,4 +1,4 @@
-import { TFile, Vault, App, MarkdownView } from 'obsidian';
+import { TFile, Vault, App, MarkdownView, getAllTags } from 'obsidian';
 import { Task, PluginSettings } from './types';
 
 /**
@@ -53,25 +53,18 @@ export class TaskProcessor {
                     return tasks;
                 }
 
-                // Quick check for task identifiers before full processing
-                if (this.settings.taskIdentificationMethod === 'tag' && !content.includes(this.settings.noteTag)) {
-                    return [];
-                }
-
-                const lines = content.split('\n');
-                if (this.settings.taskIdentificationMethod === 'header') {
-                    // Check for a heading that contains the word 'task' (case-insensitive)
-                    let hasTaskHeader = false;
-                    for (let i = 0; i < Math.min(20, lines.length); i++) { // Limit check to first 20 lines
-                        if (lines[i].startsWith('#') && lines[i].toLowerCase().includes('task')) {
-                            hasTaskHeader = true;
-                            break;
-                        }
+                // Check if file matches configured identification method using metadata cache
+                if (this.settings.taskIdentificationMethod === 'tag') {
+                    if (!this.fileHasConfiguredTag(file)) {
+                        return [];
                     }
-                    if (!hasTaskHeader) {
+                } else if (this.settings.taskIdentificationMethod === 'header') {
+                    if (!this.fileHasConfiguredHeader(file)) {
                         return [];
                     }
                 }
+
+                const lines = content.split('\n');
 
 
                 // Process all lines at once since we've already filtered the file
@@ -92,6 +85,36 @@ export class TaskProcessor {
             console.error(`Error processing file ${file.path}:`, error);
             return [];
         }
+    }
+
+    /**
+     * Checks if a file has the configured tag using metadata cache.
+     * @param file - The file to check.
+     * @returns True if the file has the configured tag, false otherwise.
+     */
+    private fileHasConfiguredTag(file: TFile): boolean {
+        if (!this.app) return false;
+        
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (!cache) return false;
+        
+        const tags = (getAllTags(cache) ?? []).map(t => t.replace(/^#/, '').toLowerCase());
+        const configured = this.settings.noteTag.replace(/^#/, '').toLowerCase();
+        return tags.includes(configured);
+    }
+
+    /**
+     * Checks if a file has the configured header using metadata cache.
+     * @param file - The file to check.
+     * @returns True if the file has a header containing 'task', false otherwise.
+     */
+    private fileHasConfiguredHeader(file: TFile): boolean {
+        if (!this.app) return false;
+        
+        const cache = this.app.metadataCache.getFileCache(file);
+        const headings = cache?.headings ?? [];
+        // Check for any heading that contains the word 'task' (case-insensitive)
+        return headings.some(h => h.heading.trim().toLowerCase().includes('task'));
     }
 
     /**
@@ -172,34 +195,33 @@ export class TaskProcessor {
      */
     async toggleTask(task: Task, newState: boolean): Promise<void> {
         try {
-            // Use cachedRead for better performance
-            const content = await this.vault.cachedRead(task.sourceFile);
-            const lines = content.split('\n');
-            let line = lines[task.lineNumber];
-
-            // Prepare the new line content
-            const dateMatch = line.match(/✅ \d{4}-\d{2}-\d{2}$/); // Check for existing completion date
             const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+            const lineNumber = task.lineNumber;
+            
+            // Use Vault.process for background-safe file modifications
+            await this.vault.process(task.sourceFile, (content) => {
+                const lines = content.split('\n');
+                let line = lines[lineNumber];
 
-            if (newState) {
-                // Adding completion - replacing the task prefix with checked task, and adding a date if it isn't already there
-                line = line.replace(/\[ \]/, '[x]') + (!dateMatch ? ` ✅ ${today}` : ''); // Add completion mark and date
-                task.completionDate = dateMatch ? dateMatch[0].substring(2) : today; // update the completion date of task
-            } else {
-                // Removing completion - replacing the task prefix with unchecked, and removing the date string
-                line = line.replace(/\[[xX]\]/, '[ ]').replace(/✅ \d{4}-\d{2}-\d{2}$/, '').trim(); // Remove completion mark and date
-                task.completionDate = null; // update the completion date of task
-            }
+                // Prepare the new line content
+                const dateMatch = line.match(/✅ \d{4}-\d{2}-\d{2}$/); // Check for existing completion date
 
-            lines[task.lineNumber] = line;
+                if (newState) {
+                    // Adding completion - replacing the task prefix with checked task, and adding a date if it isn't already there
+                    line = line.replace(/\[ \]/, '[x]') + (!dateMatch ? ` ✅ ${today}` : ''); // Add completion mark and date
+                    task.completionDate = dateMatch ? dateMatch[0].substring(2) : today; // update the completion date of task
+                } else {
+                    // Removing completion - replacing the task prefix with unchecked, and removing the date string
+                    line = line.replace(/\[[xX]\]/, '[ ]').replace(/✅ \d{4}-\d{2}-\d{2}$/, '').trim(); // Remove completion mark and date
+                    task.completionDate = null; // update the completion date of task
+                }
+
+                lines[lineNumber] = line;
+                return lines.join('\n');
+            });
+            
             task.completed = newState;
             task.lastUpdated = Date.now();
-
-            // Modify file in background
-            this.vault.modify(task.sourceFile, lines.join('\n')).catch(error => {
-                console.error('Error modifying file:', error);
-                throw error; // Re-throw the error to be caught by the caller
-            });
         } catch (error) {
             console.error('Error toggling task:', error);
             throw error; // Re-throw the error to be caught by the caller
@@ -223,8 +245,8 @@ export class TaskProcessor {
 
             // Focus and scroll to the task line
             const view = targetLeaf.view;
-            if (view.getViewType() === 'markdown') {
-                const editor = (view as MarkdownView).editor; // Access the editor with proper type
+            if (view instanceof MarkdownView) {
+                const editor = view.editor; // Access the editor with proper type
                 if (editor) {
                     const pos = { line: task.lineNumber, ch: 0 }; // Cursor position at the start of the line
                     editor.setCursor(pos); // Set the cursor position

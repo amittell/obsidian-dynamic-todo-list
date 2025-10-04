@@ -31,7 +31,7 @@ export class TaskListModal extends Modal {
         const { contentEl } = this;
         contentEl.empty(); // Clear any existing content
 
-        contentEl.createEl('h2', { text: 'Tasks From Tagged Notes' }); // Set the modal title
+        contentEl.createEl('h2', { text: 'Tasks from tagged notes' }); // Set the modal title
         this.taskListContainer = contentEl.createDiv({ cls: 'task-list' }); // Create a container for the task list
         this.renderTaskList(); // Render the task list
     }

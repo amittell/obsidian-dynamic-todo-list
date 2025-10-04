@@ -25,8 +25,6 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty(); // Clear existing content
 
-        containerEl.createEl('h2', { text: 'Dynamic Todo List Settings' });
-
         // Task Identification Method
         new Setting(containerEl)
             .setName('Task identification method')
@@ -73,10 +71,10 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
             .addDropdown(dropdown => dropdown
                 .addOption('name-asc', 'Name (A to Z)')   // Sort by file name (ascending)
                 .addOption('name-desc', 'Name (Z to A)')  // Sort by file name (descending)
-                .addOption('created-desc', 'Created (Newest)') // Sort by file creation date (descending)
-                .addOption('created-asc', 'Created (Oldest)') // Sort by file creation date (ascending)
-                .addOption('lastModified-desc', 'Modified (Newest)') // Sort by file modification date (descending)
-                .addOption('lastModified-asc', 'Modified (Oldest)') // Sort by file modification date (ascending)
+                .addOption('created-desc', 'Created (newest)') // Sort by file creation date (descending)
+                .addOption('created-asc', 'Created (oldest)') // Sort by file creation date (ascending)
+                .addOption('lastModified-desc', 'Modified (newest)') // Sort by file modification date (descending)
+                .addOption('lastModified-asc', 'Modified (oldest)') // Sort by file modification date (ascending)
                 .setValue(`${this.plugin.settings.sortPreference.field}-${this.plugin.settings.sortPreference.direction}`) // Set the current value
                 .onChange(async (value) => { // Handle value changes
                     const [field, direction] = value.split('-'); // Split the value into field and direction
@@ -134,7 +132,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     }));
             
             // Style as a sub-setting with indentation
-            showDatesSetting.settingEl.addClass('sub-setting');
+            showDatesSetting.settingEl.addClass('dtl-sub-setting');
         }
 
         // Move completed tasks to bottom setting (conditional sub-setting)
@@ -151,11 +149,13 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     }));
             
             // Style as a sub-setting with indentation
-            moveCompletedSetting.settingEl.addClass('sub-setting');
+            moveCompletedSetting.settingEl.addClass('dtl-sub-setting');
         }
 
         // Link Behavior section
-        containerEl.createEl('h3', { text: 'Task Link Behavior' });
+        new Setting(containerEl)
+            .setName('Task link behavior')
+            .setHeading();
 
         // Setting to enable/disable wiki-links in the task view
         new Setting(containerEl)
@@ -182,7 +182,9 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 }));
 
         // Folder Filters section
-        containerEl.createEl('h3', { text: 'Folder Filters' });
+        new Setting(containerEl)
+            .setName('Folder filters')
+            .setHeading();
 
         // Include folders
         const includeContainer = containerEl.createDiv('include-folders');
@@ -209,7 +211,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
         // Button to add a new include folder
         new Setting(includeContainer)
             .addButton(btn => btn
-                .setButtonText('Add Include Folder')
+                .setButtonText('Add include folder')
                 .onClick(async () => {
                     this.plugin.settings.folderFilters.include.push(''); // Add a new empty entry
                     await this.plugin.saveSettings(); // Save settings
@@ -241,7 +243,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
         // Button to add a new exclude folder
         new Setting(excludeContainer)
             .addButton(btn => btn
-                .setButtonText('Add Exclude Folder')
+                .setButtonText('Add exclude folder')
                 .onClick(async () => {
                     this.plugin.settings.folderFilters.exclude.push(''); // Add a new empty entry
                     await this.plugin.saveSettings(); // Save settings
