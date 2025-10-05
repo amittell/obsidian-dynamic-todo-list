@@ -82,7 +82,7 @@ $ npx eslint src/**/*.ts
 ## 📝 Changes Summary
 
 ### Commit 1: localStorage Replacement
-- Replaced 13 instances of localStorage with App.saveLocalStorage/loadLocalStorage
+- Replaced 12 instances of localStorage with App.saveLocalStorage/loadLocalStorage
 - Ensures vault-specific data storage
 - Affects: `src/taskView.ts`
 

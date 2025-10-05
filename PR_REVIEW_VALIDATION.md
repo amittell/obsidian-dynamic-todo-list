@@ -115,7 +115,7 @@ Current main branch is at commit `08b3298` which includes all PR review fixes.
 **Status**: ✅ **FIXED** (PR #10)
 
 **Implementation**:
-- Replaced all 13 instances in `taskView.ts`
+- Replaced all 12 instances in `taskView.ts` (5 loadLocalStorage + 7 saveLocalStorage)
 - View state now vault-specific: collapsed sections, hide completed, search, sort
 - Prevents data leakage between different Obsidian vaults
 - Updated lines: 168, 170, 208, 219, 237, 247, 293, 317, 329, 490, 502, 659

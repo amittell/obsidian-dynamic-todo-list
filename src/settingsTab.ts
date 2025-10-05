@@ -46,6 +46,7 @@ class FolderSuggest extends AbstractInputSuggest<TFolder> {
  */
 export class DynamicTodoListSettingTab extends PluginSettingTab {
     private plugin: DynamicTodoList;
+    private folderSuggesters: FolderSuggest[] = [];
 
     /**
      * Constructs the settings tab.
@@ -61,6 +62,10 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
      * Renders the settings tab in the Obsidian settings modal.
      */
     display(): void {
+        // Clean up previous folder suggesters to prevent memory leaks
+        this.folderSuggesters.forEach(suggester => suggester.close());
+        this.folderSuggesters = [];
+
         const { containerEl } = this;
         containerEl.empty(); // Clear existing content
 
@@ -240,7 +245,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                             await this.plugin.saveSettings(); // Save settings
                         });
                     // Add folder suggester for type-ahead support
-                    new FolderSuggest(this.app, text.inputEl);
+                    this.folderSuggesters.push(new FolderSuggest(this.app, text.inputEl));
                 })
                 .addButton(btn => btn
                     .setIcon('trash') // Add a trash icon for removing the entry
@@ -276,7 +281,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                             await this.plugin.saveSettings(); // Save settings
                         });
                     // Add folder suggester for type-ahead support
-                    new FolderSuggest(this.app, text.inputEl);
+                    this.folderSuggesters.push(new FolderSuggest(this.app, text.inputEl));
                 })
                 .addButton(btn => btn
                     .setIcon('trash')  // Add trash icon for removing entry

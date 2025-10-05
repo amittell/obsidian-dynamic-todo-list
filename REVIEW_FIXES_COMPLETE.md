@@ -78,7 +78,7 @@ Applied `normalizePath()` to folder filter include/exclude paths
 
 ### 15. ✅ Replace localStorage with App.saveLocalStorage
 **Fixed in**: PR #10 (FINAL REQUIRED FIX)  
-Replaced all 13 instances:
+Replaced all 12 instances (5 loadLocalStorage + 7 saveLocalStorage):
 - `localStorage.getItem` → `this.app.loadLocalStorage`
 - `localStorage.setItem` → `this.app.saveLocalStorage`
 
