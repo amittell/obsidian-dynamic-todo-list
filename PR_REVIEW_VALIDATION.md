@@ -80,6 +80,53 @@ Current main branch is at commit `08b3298` which includes all PR review fixes.
 
 ---
 
+## Latest Update (2025-10-05)
+
+**Additional Required Fixes Implemented:**
+
+### 4. ✅ Replace deprecated MarkdownRenderer.renderMarkdown()
+**Issue**: Use `.render()` instead of deprecated `.renderMarkdown()`  
+**Status**: ✅ **FIXED**
+
+**Implementation**:
+- Changed from `MarkdownRenderer.renderMarkdown()` to `MarkdownRenderer.render(this.app, ...)`
+- Updated in `taskView.ts` line 680-686
+
+### 5. ✅ Use Vault API instead of Adapter API
+**Issue**: Use `Vault.getFileByPath()` instead of `adapter.stat()`  
+**Status**: ✅ **FIXED**
+
+**Implementation**:
+- Replaced `this.app.vault.adapter.stat(filePath)` with `this.app.vault.getFileByPath(filePath)`
+- Uses `.stat` property from TFile object
+- Updated in `taskView.ts` lines 115-124
+
+### 6. ✅ Add normalizePath for user-defined paths
+**Issue**: Clean up user-defined folder paths using `normalizePath()`  
+**Status**: ✅ **FIXED**
+
+**Implementation**:
+- Import `normalizePath` from Obsidian API
+- Apply to both include and exclude folder filter paths
+- Updated in `settingsTab.ts` lines 199, 232
+
+### ❌ localStorage Replacement (NOT YET IMPLEMENTED)
+**Issue**: Replace `localStorage.setItem/getItem` with `App.saveLocalStorage/loadLocalStorage`  
+**Status**: ❌ **PENDING**
+
+**Locations requiring updates** (13 instances in taskView.ts):
+- Lines 167, 169, 207, 218, 236, 246, 292, 316, 328, 489, 501, 658
+
+**Why this matters**: Using browser's localStorage shares data across all vaults on the same device. Obsidian's `App.saveLocalStorage` stores data per-vault.
+
+### Optional Improvements (Recommended but not required):
+- AbstractInputSuggest for folder selection (type-ahead support)
+- Conditional visibility for dependent settings (partially implemented)
+- Use MetadataCache.getFileCache for header detection (optional alternative)
+
+---
+
 **Validation completed by**: Warp AI Agent  
 **Branch**: main  
-**Commit**: 08b3298
+**Commit**: 7975ed6  
+**Build Status**: ✅ PASSING
