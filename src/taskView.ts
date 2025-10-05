@@ -165,9 +165,9 @@ export class TaskView extends ItemView {
 
         // Restore states FIRST before creating UI elements
         this.collapsedSections = new Set(
-            JSON.parse(localStorage.getItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS) || '[]')
+            JSON.parse(this.app.loadLocalStorage(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS) || '[]')
         );
-        this.hideCompleted = localStorage.getItem(TaskView.STORAGE_KEYS.HIDE_COMPLETED) === 'true';
+        this.hideCompleted = this.app.loadLocalStorage(TaskView.STORAGE_KEYS.HIDE_COMPLETED) === 'true';
 
         // Create all UI elements
         const headerSection = contentEl.createDiv({ cls: 'task-list-header-section' });
@@ -205,7 +205,7 @@ export class TaskView extends ItemView {
         const firstRow = controlsSection.createDiv({ cls: 'task-controls-row' });
         
         // Search box with stored value
-        const savedSearch = localStorage.getItem(TaskView.STORAGE_KEYS.SEARCH) || '';
+        const savedSearch = this.app.loadLocalStorage(TaskView.STORAGE_KEYS.SEARCH) || '';
         this.searchInput = firstRow.createEl('input', {
             cls: 'task-search',
             attr: { 
@@ -216,7 +216,7 @@ export class TaskView extends ItemView {
         });
 
         const debouncedSearch = debounce(() => {
-            localStorage.setItem(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
+            this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
             this.renderTaskList();
         }, 200, true);
         
@@ -234,7 +234,7 @@ export class TaskView extends ItemView {
         sortSelect.createEl('option', { text: 'Modified (oldest)', value: 'modified-asc' });
 
         // Get saved sort preference
-        const savedSort = localStorage.getItem(TaskView.STORAGE_KEYS.SORT) || 
+        const savedSort = this.app.loadLocalStorage(TaskView.STORAGE_KEYS.SORT) || 
             `${this.processor.settings.sortPreference.field}-${this.processor.settings.sortPreference.direction}`;
         sortSelect.value = savedSort;
         
@@ -244,7 +244,7 @@ export class TaskView extends ItemView {
                 field: field as 'name' | 'created' | 'lastModified',
                 direction: direction as 'asc' | 'desc'
             };
-            localStorage.setItem(TaskView.STORAGE_KEYS.SORT, sortSelect.value);
+            this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SORT, sortSelect.value);
             this.renderTaskList();
         });
 
@@ -290,7 +290,7 @@ export class TaskView extends ItemView {
 
         hideCompletedCheckbox.addEventListener('change', () => {
             this.hideCompleted = hideCompletedCheckbox.checked;
-            localStorage.setItem(TaskView.STORAGE_KEYS.HIDE_COMPLETED, this.hideCompleted.toString());
+            this.app.saveLocalStorage(TaskView.STORAGE_KEYS.HIDE_COMPLETED, this.hideCompleted.toString());
             this.renderTaskList();
         });
         
@@ -314,7 +314,7 @@ export class TaskView extends ItemView {
         this.collapsedSections = new Set(allPaths);
         
         // Save state
-        localStorage.setItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, 
+        this.app.saveLocalStorage(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, 
             JSON.stringify(Array.from(this.collapsedSections)));
         
         // Re-render
@@ -326,7 +326,7 @@ export class TaskView extends ItemView {
         this.collapsedSections.clear();
         
         // Save state
-        localStorage.setItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, '[]');
+        this.app.saveLocalStorage(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, '[]');
         
         // Re-render
         this.renderTaskList();
@@ -487,7 +487,7 @@ export class TaskView extends ItemView {
             });
             
             // Get saved collapse state for completed notes section
-            const isCollapsed = localStorage.getItem(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED) === 'true';
+            const isCollapsed = this.app.loadLocalStorage(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED) === 'true';
             const content = completedNotesSection.createDiv({ 
                 cls: `completed-notes-content ${isCollapsed ? 'dtl-collapsed' : ''}` 
             });
@@ -499,7 +499,7 @@ export class TaskView extends ItemView {
                 const willCollapse = !content.hasClass('dtl-collapsed');
                 content.toggleClass('dtl-collapsed', willCollapse);
                 setIcon(toggleIcon, willCollapse ? 'chevron-right' : 'chevron-down');
-                localStorage.setItem(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED, willCollapse.toString());
+                this.app.saveLocalStorage(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED, willCollapse.toString());
             });
 
             // Render completed note sections
@@ -656,7 +656,7 @@ export class TaskView extends ItemView {
             }
 
             // Save collapse states
-            localStorage.setItem(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, 
+            this.app.saveLocalStorage(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, 
                 JSON.stringify(Array.from(this.collapsedSections)));
         });
     }
