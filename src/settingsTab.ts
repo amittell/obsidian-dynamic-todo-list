@@ -20,7 +20,7 @@ class FolderSuggest extends AbstractInputSuggest<TFolder> {
         abstractFiles.forEach((folder: TAbstractFile) => {
             if (
                 folder instanceof TFolder &&
-                folder.path.toLowerCase().contains(lowerCaseInputStr)
+                folder.path.toLowerCase().includes(lowerCaseInputStr)
             ) {
                 folders.push(folder);
             }
