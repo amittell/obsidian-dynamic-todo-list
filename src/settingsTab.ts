@@ -1,5 +1,44 @@
-import { App, PluginSettingTab, Setting, normalizePath } from 'obsidian';
+import { App, PluginSettingTab, Setting, normalizePath, AbstractInputSuggest, TFolder, TAbstractFile } from 'obsidian';
 import DynamicTodoList from './main';
+
+/**
+ * Folder suggester for providing type-ahead folder selection.
+ */
+class FolderSuggest extends AbstractInputSuggest<TFolder> {
+    private textInputEl: HTMLInputElement;
+
+    constructor(app: App, inputEl: HTMLInputElement) {
+        super(app, inputEl);
+        this.textInputEl = inputEl;
+    }
+
+    getSuggestions(inputStr: string): TFolder[] {
+        const abstractFiles = this.app.vault.getAllLoadedFiles();
+        const folders: TFolder[] = [];
+        const lowerCaseInputStr = inputStr.toLowerCase();
+
+        abstractFiles.forEach((folder: TAbstractFile) => {
+            if (
+                folder instanceof TFolder &&
+                folder.path.toLowerCase().contains(lowerCaseInputStr)
+            ) {
+                folders.push(folder);
+            }
+        });
+
+        return folders;
+    }
+
+    renderSuggestion(folder: TFolder, el: HTMLElement): void {
+        el.setText(folder.path);
+    }
+
+    selectSuggestion(folder: TFolder): void {
+        this.textInputEl.value = folder.path;
+        this.textInputEl.trigger('input');
+        this.close();
+    }
+}
 
 /**
  * Setting tab for the Dynamic Todo List plugin.
@@ -193,13 +232,16 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
         // Loop through existing include paths and create settings for each
         this.plugin.settings.folderFilters.include.forEach((path, index) => {
             new Setting(includeContainer)
-                .addText(text => text
-                    .setValue(path) // Set the current value
-                    .onChange(async (value) => { // Handle value changes
-                        // Clean up the path using normalizePath
-                        this.plugin.settings.folderFilters.include[index] = normalizePath(value); // Update the specific path
-                        await this.plugin.saveSettings(); // Save settings
-                    }))
+                .addText(text => {
+                    text.setValue(path) // Set the current value
+                        .onChange(async (value) => { // Handle value changes
+                            // Clean up the path using normalizePath
+                            this.plugin.settings.folderFilters.include[index] = normalizePath(value); // Update the specific path
+                            await this.plugin.saveSettings(); // Save settings
+                        });
+                    // Add folder suggester for type-ahead support
+                    new FolderSuggest(this.app, text.inputEl);
+                })
                 .addButton(btn => btn
                     .setIcon('trash') // Add a trash icon for removing the entry
                     .onClick(async () => { // Handle removal
@@ -226,13 +268,16 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
         // Loop through existing exclude paths and create settings for each
         this.plugin.settings.folderFilters.exclude.forEach((path, index) => {
             new Setting(excludeContainer)
-                .addText(text => text
-                    .setValue(path) // Set the current value
-                    .onChange(async (value) => { // Handle value changes
-                        // Clean up the path using normalizePath
-                        this.plugin.settings.folderFilters.exclude[index] = normalizePath(value); // Update the specific path
-                        await this.plugin.saveSettings(); // Save settings
-                    }))
+                .addText(text => {
+                    text.setValue(path) // Set the current value
+                        .onChange(async (value) => { // Handle value changes
+                            // Clean up the path using normalizePath
+                            this.plugin.settings.folderFilters.exclude[index] = normalizePath(value); // Update the specific path
+                            await this.plugin.saveSettings(); // Save settings
+                        });
+                    // Add folder suggester for type-ahead support
+                    new FolderSuggest(this.app, text.inputEl);
+                })
                 .addButton(btn => btn
                     .setIcon('trash')  // Add trash icon for removing entry
                     .onClick(async () => { // Handle removal
