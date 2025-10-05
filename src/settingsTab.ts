@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, normalizePath } from 'obsidian';
 import DynamicTodoList from './main';
 
 /**
@@ -196,7 +196,8 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 .addText(text => text
                     .setValue(path) // Set the current value
                     .onChange(async (value) => { // Handle value changes
-                        this.plugin.settings.folderFilters.include[index] = value; // Update the specific path
+                        // Clean up the path using normalizePath
+                        this.plugin.settings.folderFilters.include[index] = normalizePath(value); // Update the specific path
                         await this.plugin.saveSettings(); // Save settings
                     }))
                 .addButton(btn => btn
@@ -228,7 +229,8 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 .addText(text => text
                     .setValue(path) // Set the current value
                     .onChange(async (value) => { // Handle value changes
-                        this.plugin.settings.folderFilters.exclude[index] = value; // Update the specific path
+                        // Clean up the path using normalizePath
+                        this.plugin.settings.folderFilters.exclude[index] = normalizePath(value); // Update the specific path
                         await this.plugin.saveSettings(); // Save settings
                     }))
                 .addButton(btn => btn

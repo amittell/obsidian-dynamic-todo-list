@@ -111,15 +111,16 @@ export class TaskView extends ItemView {
 
     private async fetchFileStats(filePath: string, requestTime: number): Promise<{ctime: number, mtime: number} | null> {
         try {
-            const stat = await this.app.vault.adapter.stat(filePath);
-            if (stat) {
+            // Use Vault API instead of Adapter API
+            const file = this.app.vault.getFileByPath(filePath);
+            if (file && file.stat) {
                 // Cache for 30 seconds
                 this.fileStatsCache.set(filePath, {
-                    ctime: stat.ctime,
-                    mtime: stat.mtime,
+                    ctime: file.stat.ctime,
+                    mtime: file.stat.mtime,
                     expires: requestTime + 30000
                 });
-                return {ctime: stat.ctime, mtime: stat.mtime};
+                return {ctime: file.stat.ctime, mtime: file.stat.mtime};
             }
             return null;
         } catch (error) {
@@ -677,7 +678,8 @@ export class TaskView extends ItemView {
         this.markdownComponents.push(component);
 
         // Render markdown with Obsidian's renderer
-        MarkdownRenderer.renderMarkdown(
+        MarkdownRenderer.render(
+            this.app,
             task.taskText,
             taskClickWrapper,
             task.sourceFile.path,
