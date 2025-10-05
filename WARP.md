@@ -37,16 +37,20 @@ This is an Obsidian plugin that creates a dynamic todo list by aggregating tasks
 - Collapsible file sections
 - Search and sort functionality
 - Separate sections for active and completed tasks
-- Persists UI state (collapse states, search term, sort preference) in localStorage
+- Persists UI state (collapse states, search term, sort preference) using App.saveLocalStorage/loadLocalStorage
 - Markdown rendering for task text
+- Optional file header display with creation/modification dates
+- Optional "move completed to bottom" for flat view
 
 **settingsTab.ts** — Configuration interface
 - Task identification method (tag vs header)
 - Note tag/task prefix customization
-- Folder filters
+- Folder filters with type-ahead suggestions (FolderSuggest)
 - Sort preferences
 - Task archiving settings
 - Link behavior settings
+- Show/hide file headers option
+- Show/hide dates in file headers
 
 **types.ts** — Type definitions
 - PluginSettings interface
@@ -78,7 +82,7 @@ This is an Obsidian plugin that creates a dynamic todo list by aggregating tasks
 - DOM updates use batch operations where possible
 
 ### State Management
-- UI state (collapse states, search term, sort preferences) persists in localStorage
+- UI state (collapse states, search term, sort preferences) persists using App.saveLocalStorage/loadLocalStorage (vault-specific)
 - Tasks maintain bidirectional sync with source files
 - Proper cleanup in plugin lifecycle methods
 
@@ -89,7 +93,8 @@ This is an Obsidian plugin that creates a dynamic todo list by aggregating tasks
 
 ### Folder Filtering
 - Supports include/exclude patterns for folder filtering
-- Configurable via settings
+- Configurable via settings with type-ahead folder suggestions
+- FolderSuggest class extends AbstractInputSuggest for autocomplete
 
 ## Important Development Notes
 

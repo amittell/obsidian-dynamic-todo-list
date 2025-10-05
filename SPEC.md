@@ -49,9 +49,14 @@ A plugin for Obsidian that dynamically aggregates tasks from notes, allowing cen
 - Configurable link behavior:
     - Enable/disable navigation for wiki-links within tasks.
     - Enable/disable navigation for URL links within tasks.
-- Folder filtering:
+- Folder filtering with type-ahead autocomplete:
     - List of folders to include.
     - List of folders to exclude.
+- File header display options:
+    - Show/hide file headers in task list.
+    - Show/hide creation/modification dates in headers.
+- Task organization:
+    - Option to move completed tasks to bottom of flat list.
 
 ## Technical Architecture
 
@@ -81,8 +86,10 @@ A plugin for Obsidian that dynamically aggregates tasks from notes, allowing cen
     -   Search and sorting implementation.
     -   Loading indicator management.
     -   Markdown rendering for task text.
-    -   Local storage for collapse state, search term, and sort preference.
+    -   Vault-specific storage using App.saveLocalStorage/loadLocalStorage for collapse state, search term, and sort preference.
     -   Separation of notes into active and completed sections.
+    -   Optional file header display with creation/modification dates.
+    -   Optional "move completed to bottom" for flat list view.
 
 4. **Task List Modal** (`taskListModal.ts`)
     - Modal view for displaying tasks (alternative to the side panel).
@@ -91,6 +98,7 @@ A plugin for Obsidian that dynamically aggregates tasks from notes, allowing cen
 
 5.  **Settings Tab** (`settingsTab.ts`)
     -   UI for configuring plugin settings.
+    -   Folder path inputs with type-ahead autocomplete (FolderSuggest class extends AbstractInputSuggest).
 
 6.  **Type System** (`types.ts`)
     -   Interface definitions:
@@ -99,8 +107,8 @@ A plugin for Obsidian that dynamically aggregates tasks from notes, allowing cen
         -   `FileMetadata`: Represents file metadata (created, lastUpdated).
     -   Default configurations (`DEFAULT_SETTINGS`).
 
-7. **Utilities** (`utils.ts`)
-    - `debounce` function for debouncing operations.
+7. **Utilities**
+    - Note: Debounce function is implemented inline in main.ts (utils.ts does not exist).
 
 ### Data Flow
 1.  **Initialization**
@@ -138,13 +146,12 @@ A plugin for Obsidian that dynamically aggregates tasks from notes, allowing cen
 ### File Structure
 ```
 src/
-├── main.ts           # Plugin core
+├── main.ts           # Plugin core (includes debounce utility)
 ├── taskProcessor.ts  # Task handling
 ├── taskView.ts      # Sidebar view
-├── taskListModal.ts  # Modal view
-├── settingsTab.ts   # Settings tab
-├── types.ts         # Type definitions
-└── utils.ts         # Utility functions
+├── taskListModal.ts  # Modal view (legacy, not actively used)
+├── settingsTab.ts   # Settings tab (includes FolderSuggest class)
+└── types.ts         # Type definitions
 ```
 
 ### Error Handling
@@ -157,7 +164,7 @@ src/
 -   Debounced processing (file updates, search input).
 -   Efficient indexing (using Obsidian's `cachedRead`).
 -   Responsive UI (background updates, asynchronous operations).
--   Local storage for persisting view state.
+-   Vault-specific storage using App.saveLocalStorage/loadLocalStorage for persisting view state.
 
 ### Mobile Support
 -   `manifest.json` declares `isDesktopOnly: false`.

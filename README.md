@@ -4,7 +4,7 @@ A plugin for Obsidian that creates a dynamic, aggregated list of tasks from your
 
 ## Features
 
-- 📑 **Note-Level Task Collection**: Tag any note with `#tasks` to include all its tasks
+- 📑 **Note-Level Task Collection**: Tag any note with `#tasks` (or use header-based detection)
 - ✅ **Standard Markdown Tasks**: Works with Obsidian's native task format
 - 🔄 **Real-Time Updates**: Tasks update automatically as you edit notes
 - 📱 **Mobile Compatible**: Works seamlessly on both desktop and mobile
@@ -12,8 +12,15 @@ A plugin for Obsidian that creates a dynamic, aggregated list of tasks from your
   - Ribbon icon (dice)
   - Command palette
   - Configurable hotkey (set in Obsidian Settings > Hotkeys)
-- 🎨 **Source Context**: Tasks stay organized by their source notes
-- ⚙️ **Configurable**: Customize task format and note tag
+- 🎨 **Flexible Views**: 
+  - Tasks organized by source notes with collapsible sections
+  - Optional file headers with creation/modification dates
+  - Flat list view with optional "completed tasks to bottom"
+- 📎 **Folder Filtering**: Include/exclude folders with type-ahead autocomplete
+- 🔍 **Search & Sort**: Filter tasks by text and sort by name, creation, or modification date
+- 📋 **Auto-Archive**: Automatically hide completed tasks older than X days
+- 🔗 **Smart Links**: Configurable wiki-link and URL navigation within tasks
+- ⚙️ **Highly Configurable**: Customize task format, note tags, and display preferences
 
 ## Usage
 
@@ -31,8 +38,26 @@ A plugin for Obsidian that creates a dynamic, aggregated list of tasks from your
 ## Configuration
 
 Settings > Dynamic Todo List:
+
+**Task Identification:**
+- Task identification method: By tag or by header
 - Note Tag: The tag that marks notes containing tasks (default: `#tasks`)
 - Task Prefix: The prefix used to identify tasks (default: `- [ ]`)
+
+**Display Options:**
+- Default sort order: Name, creation date, or modification date (ascending/descending)
+- Auto-archive: Hide completed tasks older than X days
+- Show file headers: Display file names as section headers
+- Show dates: Show creation/modification dates in headers
+- Move completed to bottom: In flat view, show completed tasks last
+
+**Link Behavior:**
+- Enable wiki-links: Allow clicking [[links]] in tasks
+- Enable URL links: Allow clicking URLs in tasks
+
+**Folder Filtering:**
+- Include folders: Specify folders to scan (with autocomplete)
+- Exclude folders: Specify folders to skip (with autocomplete)
 
 ## Example
 
