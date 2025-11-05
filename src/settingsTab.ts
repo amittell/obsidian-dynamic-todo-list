@@ -196,11 +196,6 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
             moveCompletedSetting.settingEl.addClass('dtl-sub-setting');
         }
 
-        // Link Behavior section
-        new Setting(containerEl)
-            .setName('Task link behavior')
-            .setHeading();
-
         // Setting to enable/disable wiki-links in the task view
         new Setting(containerEl)
             .setName('Enable wiki-links')
@@ -224,11 +219,6 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();  // Save setting
                     await this.plugin.refreshTaskView(); // Refresh view to apply changes
                 }));
-
-        // Folder Filters section
-        new Setting(containerEl)
-            .setName('Folder filters')
-            .setHeading();
 
         // Include folders
         const includeContainer = containerEl.createDiv('include-folders');
