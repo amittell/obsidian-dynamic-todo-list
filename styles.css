@@ -454,23 +454,7 @@
     display: none;
 }
 
-/* Settings button style overrides */
-.setting-item-control button:not(.dtl-clickable-icon) {
-    font-size: 14px;
-    padding: 4px 8px;
-    height: auto;
-    min-height: 28px;
-    border-radius: 4px;
-    background-color: var(--interactive-normal);
-}
-
-.setting-item-control button:not(.dtl-clickable-icon):hover {
-    background-color: var(--interactive-hover);
-}
-
-.setting-item-control button.dtl-capturing-hotkey:hover {
-    background-color: var(--interactive-accent);
-}
+/* Settings button style overrides - removed global selectors to avoid conflicts with other plugins */
 
 /* Icon button improvements */
 .dtl-clickable-icon {
@@ -750,14 +734,7 @@
     font-size: 0.9em;
 }
 
-/* Enhanced description styling for related settings */
-.setting-item .setting-item-description {
-    line-height: 1.4;
-}
-
-.setting-item .setting-item-description strong {
-    color: var(--text-normal);
-}
+/* Enhanced description styling removed to avoid global style conflicts */
 
 /* Info indicator for settings relationships */
 .dtl-settings-info-indicator {
