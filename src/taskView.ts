@@ -58,7 +58,7 @@ export class TaskView extends ItemView {
 
     private cleanupExpiredCache(): void {
         const now = Date.now();
-        for (const [key, value] of this.fileStatsCache) {
+        for (const [key, value] of Array.from(this.fileStatsCache.entries())) {
             if (value.expires <= now) {
                 this.fileStatsCache.delete(key);
             }
@@ -665,7 +665,7 @@ export class TaskView extends ItemView {
     private renderTaskItem(container: HTMLElement, task: Task) {
         const taskEl = container.createDiv({ cls: 'task-item' });
         
-        const checkbox = taskEl.createDiv({ cls: 'task-checkbox clickable-icon' });
+        const checkbox = taskEl.createDiv({ cls: 'task-checkbox dtl-clickable-icon' });
         setIcon(checkbox, task.completed ? 'check-square' : 'square');
         
         const taskTextContainer = taskEl.createDiv({
