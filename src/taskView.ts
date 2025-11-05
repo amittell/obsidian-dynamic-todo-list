@@ -808,17 +808,21 @@ export class TaskView extends ItemView {
         if (existingLeaf) {
             // Activate and focus the existing leaf
             await this.app.workspace.setActiveLeaf(existingLeaf);
-            const view = existingLeaf.view as MarkdownView;
-            
-            // Ensure the editor is focused and cursor is set
-            if (view.editor) {
-                view.editor.focus();
-                view.editor.setCursor(task.lineNumber);
-                // Scroll the line into view
-                view.editor.scrollIntoView(
-                    { from: { line: task.lineNumber, ch: 0 }, to: { line: task.lineNumber, ch: 0 } },
-                    true
-                );
+
+            // Use instanceof check instead of type casting
+            if (existingLeaf.view instanceof MarkdownView) {
+                const view = existingLeaf.view;
+
+                // Ensure the editor is focused and cursor is set
+                if (view.editor) {
+                    view.editor.focus();
+                    view.editor.setCursor(task.lineNumber);
+                    // Scroll the line into view
+                    view.editor.scrollIntoView(
+                        { from: { line: task.lineNumber, ch: 0 }, to: { line: task.lineNumber, ch: 0 } },
+                        true
+                    );
+                }
             }
         } else {
             // Let the processor handle opening in a new leaf
