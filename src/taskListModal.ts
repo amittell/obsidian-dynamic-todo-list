@@ -112,7 +112,7 @@ export class TaskListModal extends Modal {
                 const li = taskList.createEl('li', { cls: 'task-item' }); // Create list item for task
 
                 // Create checkbox for toggling task completion
-                const checkbox = li.createEl('div', { cls: 'task-checkbox clickable-icon' });
+                const checkbox = li.createEl('div', { cls: 'task-checkbox dtl-clickable-icon' });
                 setIcon(checkbox, task.completed ? 'check-square' : 'square'); // Set checkbox icon based on completion status
 
                 // Display task text
