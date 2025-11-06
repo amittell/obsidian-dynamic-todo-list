@@ -140,7 +140,7 @@ export class TaskView extends ItemView {
     }
 
     private getSortValue(): string {
-        const sortSelect = this.contentEl.querySelector('.task-sort') as HTMLSelectElement;
+        const sortSelect = this.contentEl.querySelector('.dtl-task-sort') as HTMLSelectElement;
         if (!sortSelect) {
             console.warn('Sort select element not found, using default sort preference');
             return `${this.processor.settings.sortPreference.field}-${this.processor.settings.sortPreference.direction}`;
@@ -170,21 +170,21 @@ export class TaskView extends ItemView {
         this.hideCompleted = this.app.loadLocalStorage(TaskView.STORAGE_KEYS.HIDE_COMPLETED) === 'true';
 
         // Create all UI elements
-        const headerSection = contentEl.createDiv({ cls: 'task-list-header-section' });
-        headerSection.createEl('h2', { text: 'Dynamic todo list', cls: 'task-list-header' });
-        const controlsSection = headerSection.createDiv({ cls: 'task-controls' });
-        this.taskListContainer = contentEl.createDiv({ cls: 'task-list' });
-        
+        const headerSection = contentEl.createDiv({ cls: 'dtl-task-list-header-section' });
+        headerSection.createEl('h2', { text: 'Dynamic todo list', cls: 'dtl-task-list-header' });
+        const controlsSection = headerSection.createDiv({ cls: 'dtl-task-controls' });
+        this.taskListContainer = contentEl.createDiv({ cls: 'dtl-task-list' });
+
         // Create loading overlay
-        this.loadingEl = contentEl.createDiv({ cls: 'task-list-loading' });
-        const loadingInner = this.loadingEl.createDiv({ cls: 'task-list-loading-inner' });
-        loadingInner.createDiv({ cls: 'task-list-loading-spinner' });
-        const progressBar = loadingInner.createDiv({ cls: 'task-list-loading-progress' });
-        progressBar.createDiv({ 
-            cls: 'task-list-loading-progress-inner'
+        this.loadingEl = contentEl.createDiv({ cls: 'dtl-task-list-loading' });
+        const loadingInner = this.loadingEl.createDiv({ cls: 'dtl-task-list-loading-inner' });
+        loadingInner.createDiv({ cls: 'dtl-task-list-loading-spinner' });
+        const progressBar = loadingInner.createDiv({ cls: 'dtl-task-list-loading-progress' });
+        progressBar.createDiv({
+            cls: 'dtl-task-list-loading-progress-inner'
         });
         loadingInner.createDiv({
-            cls: 'task-list-loading-text',
+            cls: 'dtl-task-list-loading-text',
             text: 'Loading tasks... 0%'
         });
 
@@ -202,13 +202,13 @@ export class TaskView extends ItemView {
 
     private async setupSearchAndSort(controlsSection: HTMLElement): Promise<void> {
         // Create a container for the first row (search and sort)
-        const firstRow = controlsSection.createDiv({ cls: 'task-controls-row' });
-        
+        const firstRow = controlsSection.createDiv({ cls: 'dtl-task-controls-row' });
+
         // Search box with stored value
         const savedSearch = this.app.loadLocalStorage(TaskView.STORAGE_KEYS.SEARCH) || '';
         this.searchInput = firstRow.createEl('input', {
-            cls: 'task-search',
-            attr: { 
+            cls: 'dtl-task-search',
+            attr: {
                 type: 'text',
                 placeholder: 'Search tasks or files...',
                 value: savedSearch
@@ -219,13 +219,13 @@ export class TaskView extends ItemView {
             this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
             this.renderTaskList();
         }, 200, true);
-        
+
         this.searchInput.addEventListener('input', () => {
             debouncedSearch();
         });
 
         // Sort dropdown
-        const sortSelect = firstRow.createEl('select', { cls: 'task-sort' });
+        const sortSelect = firstRow.createEl('select', { cls: 'dtl-task-sort' });
         sortSelect.createEl('option', { text: 'Name (A to Z)', value: 'name-asc' });
         sortSelect.createEl('option', { text: 'Name (Z to A)', value: 'name-desc' });
         sortSelect.createEl('option', { text: 'Created (newest)', value: 'created-desc' });
@@ -249,11 +249,11 @@ export class TaskView extends ItemView {
         });
 
         // Create a container for the second row (action buttons)
-        const secondRow = controlsSection.createDiv({ cls: 'task-controls-row task-action-buttons' });
+        const secondRow = controlsSection.createDiv({ cls: 'dtl-task-controls-row dtl-task-action-buttons' });
 
         // Collapse all button
         const collapseAllBtn = secondRow.createEl('button', {
-            cls: 'task-action-button',
+            cls: 'dtl-task-action-button',
             attr: { 'aria-label': 'Collapse all sections' }
         });
         setIcon(collapseAllBtn, 'chevrons-down-up');
@@ -261,28 +261,28 @@ export class TaskView extends ItemView {
 
         // Expand all button
         const expandAllBtn = secondRow.createEl('button', {
-            cls: 'task-action-button',
+            cls: 'dtl-task-action-button',
             attr: { 'aria-label': 'Expand all sections' }
         });
         setIcon(expandAllBtn, 'chevrons-up-down');
         expandAllBtn.addEventListener('click', () => this.expandAll());
 
         // Hide completed checkbox container
-        const hideCompletedContainer = secondRow.createDiv({ cls: 'task-hide-completed-container' });
+        const hideCompletedContainer = secondRow.createDiv({ cls: 'dtl-task-hide-completed-container' });
         const hideCompletedCheckbox = hideCompletedContainer.createEl('input', {
-            cls: 'task-hide-completed-checkbox',
-            attr: { 
+            cls: 'dtl-task-hide-completed-checkbox',
+            attr: {
                 type: 'checkbox',
                 id: 'hide-completed-tasks',
                 checked: this.hideCompleted,
                 'aria-label': 'Hide all completed tasks'
             }
         });
-        
+
         this.hideCompletedLabel = hideCompletedContainer.createEl('label', {
-            cls: 'task-hide-completed-label',
+            cls: 'dtl-task-hide-completed-label',
             text: 'Hide completed',
-            attr: { 
+            attr: {
                 for: 'hide-completed-tasks',
                 title: 'When checked: hide all completed tasks. When unchecked: show recent completed tasks (older than archive threshold will still be hidden)'
             }
@@ -341,11 +341,11 @@ export class TaskView extends ItemView {
             this.updateLoadingProgress(100);
             setTimeout(() => {
                 if (this.loadingEl) {
-                    this.loadingEl.addClass('hidden');
+                    this.loadingEl.addClass('dtl-hidden');
                 }
             }, 300);
         } else {
-            this.loadingEl.removeClass('hidden');
+            this.loadingEl.removeClass('dtl-hidden');
         }
         
         // Ensure tasks are rendered when loading completes
@@ -356,13 +356,13 @@ export class TaskView extends ItemView {
 
     updateLoadingProgress(percent: number): void {
         if (!this.loadingEl) return;
-        
-        const progressInner = this.loadingEl.querySelector('.task-list-loading-progress-inner') as HTMLElement;
-        const progressText = this.loadingEl.querySelector('.task-list-loading-text') as HTMLElement;
-        
+
+        const progressInner = this.loadingEl.querySelector('.dtl-task-list-loading-progress-inner') as HTMLElement;
+        const progressText = this.loadingEl.querySelector('.dtl-task-list-loading-text') as HTMLElement;
+
         if (progressInner && progressText) {
-            // Use data attribute instead of style manipulation
-            progressInner.setAttribute('data-progress', Math.round(percent).toString());
+            // Use CSS custom property for smooth progress updates
+            progressInner.style.setProperty('--progress', percent.toString());
             progressText.textContent = `Loading tasks... ${Math.round(percent)}%`;
         }
     }
@@ -460,8 +460,8 @@ export class TaskView extends ItemView {
 
         if (Object.keys(activeNotes).length === 0 && Object.keys(completedNotes).length === 0) {
             this.taskListContainer!.createEl('div', {
-                cls: 'task-empty-state',
-                text: this.searchInput?.value 
+                cls: 'dtl-task-empty-state',
+                text: this.searchInput?.value
                     ? 'No matching tasks found.'
                     : 'No tasks found. Add tasks to your notes with the configured task prefix.'
             });
@@ -470,7 +470,7 @@ export class TaskView extends ItemView {
 
         // Create active notes section
         if (Object.keys(activeNotes).length > 0) {
-            const activeSection = this.taskListContainer!.createDiv({ cls: 'active-notes-section' });
+            const activeSection = this.taskListContainer!.createDiv({ cls: 'dtl-active-notes-section' });
             for (const [path, tasks] of Object.entries(activeNotes)) {
                 await this.renderFileSection(path, tasks, activeSection);
             }
@@ -478,9 +478,9 @@ export class TaskView extends ItemView {
 
         // Create completed notes section if there are any
         if (Object.keys(completedNotes).length > 0) {
-            const completedNotesSection = this.taskListContainer!.createDiv({ cls: 'completed-notes-section' });
-            const header = completedNotesSection.createDiv({ cls: 'completed-notes-header clickable' });
-            const toggleIcon = header.createDiv({ cls: 'completed-notes-toggle' });
+            const completedNotesSection = this.taskListContainer!.createDiv({ cls: 'dtl-completed-notes-section' });
+            const header = completedNotesSection.createDiv({ cls: 'dtl-completed-notes-header clickable' });
+            const toggleIcon = header.createDiv({ cls: 'dtl-completed-notes-toggle' });
             
             header.createEl('h3', {
                 text: `Completed notes (${Object.keys(completedNotes).length})`
@@ -488,12 +488,12 @@ export class TaskView extends ItemView {
             
             // Get saved collapse state for completed notes section
             const isCollapsed = this.app.loadLocalStorage(TaskView.STORAGE_KEYS.COMPLETED_NOTES_COLLAPSED) === 'true';
-            const content = completedNotesSection.createDiv({ 
-                cls: `completed-notes-content ${isCollapsed ? 'dtl-collapsed' : ''}` 
+            const content = completedNotesSection.createDiv({
+                cls: `dtl-completed-notes-content ${isCollapsed ? 'dtl-collapsed' : ''}`
             });
-            
+
             setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
-            
+
             // Add click handler for toggling completed notes section
             header.addEventListener('click', () => {
                 const willCollapse = !content.hasClass('dtl-collapsed');
@@ -512,8 +512,8 @@ export class TaskView extends ItemView {
     private async renderFlatTaskList(filteredTasks: Task[]) {
         if (filteredTasks.length === 0) {
             this.taskListContainer!.createEl('div', {
-                cls: 'task-empty-state',
-                text: this.searchInput?.value 
+                cls: 'dtl-task-empty-state',
+                text: this.searchInput?.value
                     ? 'No matching tasks found.'
                     : 'No tasks found. Add tasks to your notes with the configured task prefix.'
             });
@@ -527,7 +527,7 @@ export class TaskView extends ItemView {
         }
 
         // Create flat task list container
-        const flatTaskList = this.taskListContainer!.createDiv({ cls: 'flat-task-list' });
+        const flatTaskList = this.taskListContainer!.createDiv({ cls: 'dtl-flat-task-list' });
         
         // Check if we should group completed tasks at the bottom
         if (this.plugin.settings.moveCompletedTasksToBottom && !this.hideCompleted) {
@@ -558,35 +558,35 @@ export class TaskView extends ItemView {
     }
 
     private async renderFileSection(path: string, tasks: { open: Task[], completed: Task[] }, container: HTMLElement) {
-        const section = container.createDiv({ cls: 'task-section' });
-        const header = section.createDiv({ cls: 'task-section-header' });
-        
+        const section = container.createDiv({ cls: 'dtl-task-section' });
+        const header = section.createDiv({ cls: 'dtl-task-section-header' });
+
         // Title row with toggle and file info
-        const titleRow = header.createDiv({ cls: 'task-section-title-row' });
-        const toggleIcon = titleRow.createDiv({ cls: 'task-section-toggle' });
-        
+        const titleRow = header.createDiv({ cls: 'dtl-task-section-title-row' });
+        const toggleIcon = titleRow.createDiv({ cls: 'dtl-task-section-toggle' });
+
         const file = tasks.open[0]?.sourceFile || tasks.completed[0]?.sourceFile;
         titleRow.createEl('h3', {
-            cls: 'task-section-title',
+            cls: 'dtl-task-section-title',
             text: file?.basename || path
         });
 
         // Add date information if setting is enabled
         if (file && this.plugin.settings.showFileHeaderDates) {
-            const dateInfo = header.createDiv({ cls: 'task-section-dates' });
+            const dateInfo = header.createDiv({ cls: 'dtl-task-section-dates' });
             const createdDate = await this.getFileCreationDate(file);
             const modifiedDate = await this.getFileModifiedDate(file);
 
             if (createdDate) {
                 dateInfo.createDiv({
-                    cls: 'task-date-entry',
+                    cls: 'dtl-task-date-entry',
                     text: `Created: ${createdDate}`
                 });
             }
-            
+
             if (modifiedDate) {
                 dateInfo.createDiv({
-                    cls: 'task-date-entry',
+                    cls: 'dtl-task-date-entry',
                     text: `Modified: ${modifiedDate}`
                 });
             }
@@ -595,14 +595,14 @@ export class TaskView extends ItemView {
         // Set initial collapse state
         const isCollapsed = this.collapsedSections.has(path);
         setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
-        
-        const content = section.createDiv({ 
-            cls: `task-section-content ${isCollapsed ? 'dtl-collapsed' : ''}`
+
+        const content = section.createDiv({
+            cls: `dtl-task-section-content ${isCollapsed ? 'dtl-collapsed' : ''}`
         });
 
         // Render open tasks first
         if (tasks.open.length > 0) {
-            const openTasksList = content.createDiv({ cls: 'open-tasks' });
+            const openTasksList = content.createDiv({ cls: 'dtl-open-tasks' });
             tasks.open.forEach(task => this.renderTaskItem(openTasksList as HTMLElement, task));
         }
 
@@ -613,27 +613,27 @@ export class TaskView extends ItemView {
 
             // Create completed tasks section if there are any recent ones
             if (recentCompletedTasks.length > 0) {
-                const completedSection = content.createDiv({ cls: 'completed-tasks-section' });
+                const completedSection = content.createDiv({ cls: 'dtl-completed-tasks-section' });
                 const completedHeader = completedSection.createDiv({
-                    cls: 'completed-tasks-header clickable'
+                    cls: 'dtl-completed-tasks-header clickable'
                 });
-                
+
                 const completedToggle = completedHeader.createDiv({
-                    cls: 'completed-tasks-toggle'
+                    cls: 'dtl-completed-tasks-toggle'
                 });
-                
+
                 completedHeader.createEl('span', {
                     text: `Completed tasks (${recentCompletedTasks.length})`
                 });
-                
+
                 const completedContent = completedSection.createDiv({
-                    cls: 'completed-tasks-content collapsed'
+                    cls: 'dtl-completed-tasks-content dtl-collapsed'
                 });
-                
+
                 setIcon(completedToggle, 'chevron-right');
-                
+
                 recentCompletedTasks.forEach(task => this.renderTaskItem(completedContent as HTMLElement, task));
-                
+
                 completedHeader.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const isCollapsed = completedContent.hasClass('dtl-collapsed');
@@ -663,15 +663,15 @@ export class TaskView extends ItemView {
 
 
     private renderTaskItem(container: HTMLElement, task: Task) {
-        const taskEl = container.createDiv({ cls: 'task-item' });
-        
-        const checkbox = taskEl.createDiv({ cls: 'task-checkbox dtl-clickable-icon' });
+        const taskEl = container.createDiv({ cls: 'dtl-task-item' });
+
+        const checkbox = taskEl.createDiv({ cls: 'dtl-task-checkbox dtl-clickable-icon' });
         setIcon(checkbox, task.completed ? 'check-square' : 'square');
-        
+
         const taskTextContainer = taskEl.createDiv({
-            cls: `task-text ${task.completed ? 'task-completed' : ''}`
+            cls: `dtl-task-text ${task.completed ? 'dtl-task-completed' : ''}`
         });
-        const taskClickWrapper = taskTextContainer.createDiv({ cls: 'task-click-wrapper' });
+        const taskClickWrapper = taskTextContainer.createDiv({ cls: 'dtl-task-click-wrapper' });
 
         // Create component for proper cleanup
         const component = new Component();
@@ -764,32 +764,32 @@ export class TaskView extends ItemView {
             
             if (isProcessing) return;
             isProcessing = true;
-            
+
             try {
-                checkbox.addClass('is-disabled');
+                checkbox.addClass('dtl-is-disabled');
                 const newState = !task.completed;
-                
+
                 // Update UI immediately
                 task.completed = newState;
                 setIcon(checkbox, task.completed ? 'check-square' : 'square');
-                taskTextContainer.toggleClass('task-completed', task.completed);
-                
-                const taskSection = taskEl.closest('.task-section') as HTMLElement;
+                taskTextContainer.toggleClass('dtl-task-completed', task.completed);
+
+                const taskSection = taskEl.closest('.dtl-task-section') as HTMLElement;
                 if (taskSection) {
                     await this.updateTaskSectionAfterToggle(taskSection, task);
                 }
-                
+
                 // Process file change
                 await this.processor.toggleTask(task, newState);
             } catch (error) {
                 // Revert UI state on error
                 task.completed = !task.completed;
                 setIcon(checkbox, task.completed ? 'check-square' : 'square');
-                taskTextContainer.toggleClass('task-completed', task.completed);
+                taskTextContainer.toggleClass('dtl-task-completed', task.completed);
                 new Notice('Failed to update task');
                 console.error('Task toggle error:', error);
             } finally {
-                checkbox.removeClass('is-disabled');
+                checkbox.removeClass('dtl-is-disabled');
                 isProcessing = false;
             }
         });
@@ -808,17 +808,21 @@ export class TaskView extends ItemView {
         if (existingLeaf) {
             // Activate and focus the existing leaf
             await this.app.workspace.setActiveLeaf(existingLeaf);
-            const view = existingLeaf.view as MarkdownView;
-            
-            // Ensure the editor is focused and cursor is set
-            if (view.editor) {
-                view.editor.focus();
-                view.editor.setCursor(task.lineNumber);
-                // Scroll the line into view
-                view.editor.scrollIntoView(
-                    { from: { line: task.lineNumber, ch: 0 }, to: { line: task.lineNumber, ch: 0 } },
-                    true
-                );
+
+            // Use instanceof check instead of type casting
+            if (existingLeaf.view instanceof MarkdownView) {
+                const view = existingLeaf.view;
+
+                // Ensure the editor is focused and cursor is set
+                if (view.editor) {
+                    view.editor.focus();
+                    view.editor.setCursor(task.lineNumber);
+                    // Scroll the line into view
+                    view.editor.scrollIntoView(
+                        { from: { line: task.lineNumber, ch: 0 }, to: { line: task.lineNumber, ch: 0 } },
+                        true
+                    );
+                }
             }
         } else {
             // Let the processor handle opening in a new leaf
@@ -836,14 +840,14 @@ export class TaskView extends ItemView {
 
         // If all tasks are completed and we're in the active notes section,
         // trigger a full re-render to move the file to completed notes
-        if (openTasks.length === 0 && completedTasks.length > 0 && 
-            section.closest('.active-notes-section')) {
+        if (openTasks.length === 0 && completedTasks.length > 0 &&
+            section.closest('.dtl-active-notes-section')) {
             this.renderTaskList();
             return;
         }
 
         // Update open tasks section if it exists
-        const openTasksList = section.querySelector('.open-tasks') as HTMLElement;
+        const openTasksList = section.querySelector('.dtl-open-tasks') as HTMLElement;
         if (openTasksList) {
             openTasksList.empty();
             openTasks.forEach(task => this.renderTaskItem(openTasksList, task));
@@ -857,29 +861,29 @@ export class TaskView extends ItemView {
 
             // Handle completed tasks section
             if (recentCompletedTasks.length > 0) {
-                let completedSection = section.querySelector('.completed-tasks-section') as HTMLElement;
-                let completedContent = section.querySelector('.completed-tasks-content') as HTMLElement;
-                
+                let completedSection = section.querySelector('.dtl-completed-tasks-section') as HTMLElement;
+                let completedContent = section.querySelector('.dtl-completed-tasks-content') as HTMLElement;
+
                 if (!completedSection) {
-                    completedSection = createDiv({ cls: 'completed-tasks-section' });
+                    completedSection = createDiv({ cls: 'dtl-completed-tasks-section' });
                     const completedHeader = completedSection.createDiv({
-                        cls: 'completed-tasks-header clickable'
+                        cls: 'dtl-completed-tasks-header clickable'
                     });
-                    
+
                     const completedToggle = completedHeader.createDiv({
-                        cls: 'completed-tasks-toggle'
+                        cls: 'dtl-completed-tasks-toggle'
                     });
-                    
+
                     completedHeader.createEl('span', {
                         text: `Completed tasks (${recentCompletedTasks.length})`
                     });
-                    
+
                     completedContent = completedSection.createDiv({
-                        cls: 'completed-tasks-content collapsed'
+                        cls: 'dtl-completed-tasks-content dtl-collapsed'
                     });
-                    
+
                     setIcon(completedToggle, 'chevron-right');
-                    
+
                     completedHeader.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const isCollapsed = completedContent.hasClass('dtl-collapsed');
@@ -903,14 +907,14 @@ export class TaskView extends ItemView {
                 }
             } else {
                 // Remove completed section if no completed tasks
-                const completedSection = section.querySelector('.completed-tasks-section');
+                const completedSection = section.querySelector('.dtl-completed-tasks-section');
                 if (completedSection) {
                     completedSection.remove();
                 }
             }
         } else {
             // Remove completed section if hide completed is enabled
-            const completedSection = section.querySelector('.completed-tasks-section');
+            const completedSection = section.querySelector('.dtl-completed-tasks-section');
             if (completedSection) {
                 completedSection.remove();
             }

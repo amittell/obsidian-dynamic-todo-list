@@ -32,7 +32,7 @@ export class TaskListModal extends Modal {
         contentEl.empty(); // Clear any existing content
 
         contentEl.createEl('h2', { text: 'Tasks from tagged notes' }); // Set the modal title
-        this.taskListContainer = contentEl.createDiv({ cls: 'task-list' }); // Create a container for the task list
+        this.taskListContainer = contentEl.createDiv({ cls: 'dtl-task-list' }); // Create a container for the task list
         this.renderTaskList(); // Render the task list
     }
 
@@ -51,7 +51,7 @@ export class TaskListModal extends Modal {
 
             // Update UI elements directly without re-rendering the entire list
             setIcon(checkbox, task.completed ? 'check-square' : 'square'); // Update checkbox icon
-            taskTextEl.classList.toggle('task-completed', task.completed); // Toggle 'task-completed' class
+            taskTextEl.classList.toggle('dtl-task-completed', task.completed); // Toggle 'dtl-task-completed' class
 
             checkbox.removeClass('is-disabled'); // Re-enable checkbox
         } catch (error) {
@@ -103,22 +103,22 @@ export class TaskListModal extends Modal {
 
         // Iterate through each file and its tasks
         Object.entries(tasksByFile).forEach(([path, tasks]) => {
-            const fileSection = this.taskListContainer!.createDiv({ cls: 'task-section' }); // Create a section for each file
+            const fileSection = this.taskListContainer!.createDiv({ cls: 'dtl-task-section' }); // Create a section for each file
             fileSection.createEl('h3', { text: path }); // Display file path as heading
             const taskList = fileSection.createEl('ul'); // Create unordered list for tasks
 
             // Render each task within the file section
             tasks.forEach(task => {
-                const li = taskList.createEl('li', { cls: 'task-item' }); // Create list item for task
+                const li = taskList.createEl('li', { cls: 'dtl-task-item' }); // Create list item for task
 
                 // Create checkbox for toggling task completion
-                const checkbox = li.createEl('div', { cls: 'task-checkbox dtl-clickable-icon' });
+                const checkbox = li.createEl('div', { cls: 'dtl-task-checkbox dtl-clickable-icon' });
                 setIcon(checkbox, task.completed ? 'check-square' : 'square'); // Set checkbox icon based on completion status
 
                 // Display task text
                 const taskText = li.createSpan({
                     text: task.taskText,
-                    cls: task.completed ? 'task-completed' : '' // Add class for completed tasks
+                    cls: task.completed ? 'dtl-task-completed' : '' // Add class for completed tasks
                 });
 
                 // Add click listener to checkbox for toggling

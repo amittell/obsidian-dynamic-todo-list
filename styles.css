@@ -25,13 +25,13 @@
 }
 
 /* Task List Header */
-.task-list-header-section {
+.dtl-task-list-header-section {
     margin-bottom: 20px;
     position: relative;
     z-index: 1001;
 }
 
-.task-list-header {
+.dtl-task-list-header {
     margin: 0;
     padding: 12px;
     font-size: 1.5em;
@@ -41,40 +41,34 @@
 }
 
 /* Controls Section */
-.task-controls {
+.dtl-task-controls {
     position: relative;
     z-index: 1001;
     display: flex;
-    gap: 12px;
-    margin: 16px 12px;
-}
-
-.task-controls {
-    display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-bottom: 16px;
+    margin: 16px 12px 16px 12px;
 }
 
-.task-controls-row {
+.dtl-task-controls-row {
     display: flex;
     gap: 8px;
     align-items: center;
 }
 
-.task-controls-row:first-child {
+.dtl-task-controls-row:first-child {
     flex-wrap: wrap;
 }
 
 /* Action buttons row */
-.task-action-buttons {
+.dtl-task-action-buttons {
     display: flex;
     gap: 8px;
     align-items: center;
 }
 
 /* Action button styles */
-.task-action-button {
+.dtl-task-action-button {
     background: var(--background-modifier-border);
     border: 1px solid var(--background-modifier-border);
     border-radius: 4px;
@@ -88,22 +82,22 @@
     min-width: 28px;
 }
 
-.task-action-button:hover {
+.dtl-task-action-button:hover {
     background: var(--background-modifier-hover);
     border-color: var(--background-modifier-hover);
 }
 
-.task-action-button:active {
+.dtl-task-action-button:active {
     background: var(--background-modifier-active-hover);
 }
 
-.task-action-button svg {
+.dtl-task-action-button svg {
     width: 16px;
     height: 16px;
     color: var(--text-muted);
 }
 
-.task-search, .task-sort {
+.dtl-task-search, .dtl-task-sort {
     flex-grow: 1;
     height: 32px;
     line-height: 24px;
@@ -114,28 +108,28 @@
     color: var(--text-normal);
 }
 
-.task-sort {
+.dtl-task-sort {
     flex-grow: 0;
     min-width: 120px;
     cursor: pointer;
 }
 
 /* Task List Container */
-.task-list {
+.dtl-task-list {
     position: relative;
     padding: 0 12px;
     min-height: 200px;
 }
 
 /* Task Section */
-.task-section {
+.dtl-task-section {
     margin-bottom: 24px;
     border-radius: 8px;
     border: 1px solid var(--background-modifier-border);
     background: var(--background-secondary);
 }
 
-.task-section-header {
+.dtl-task-section-header {
     padding: 12px;
     background: var(--background-secondary-alt);
     border-bottom: 1px solid var(--background-modifier-border);
@@ -143,20 +137,20 @@
     cursor: pointer;
 }
 
-.task-section-title {
+.dtl-task-section-title {
     margin: 0;
     font-size: 1.2em;
     font-weight: 600;
     color: var(--text-normal);
 }
 
-.task-section-toggle {
+.dtl-task-section-toggle {
     display: inline-block;
     margin-right: 8px;
     color: var(--text-muted);
 }
 
-.task-section-content {
+.dtl-task-section-content {
     padding: 12px;
     display: block;
     max-height: 2000px;
@@ -165,14 +159,14 @@
     transition: all 0.3s ease;
 }
 
-.task-section-content.dtl-collapsed {
+.dtl-task-section-content.dtl-collapsed {
     max-height: 0;
     opacity: 0;
     padding: 0;
 }
 
 /* Task Items */
-.task-item {
+.dtl-task-item {
     display: flex;
     align-items: center;
     padding: 4px 8px;
@@ -180,7 +174,7 @@
     border-radius: 4px;
 }
 
-.task-checkbox {
+.dtl-task-checkbox {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -192,11 +186,17 @@
     transition: color 0.15s ease;
 }
 
-.task-checkbox:hover {
+.dtl-task-checkbox:hover {
     color: var(--text-normal);
 }
 
-.task-text {
+.dtl-task-checkbox.dtl-is-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.dtl-task-text {
     flex: 1;
     color: var(--text-normal);
     cursor: pointer;
@@ -210,36 +210,36 @@
     position: relative;
 }
 
-.task-text:hover {
+.dtl-task-text:hover {
     background-color: var(--background-modifier-hover);
 }
 
-.task-text p {
+.dtl-task-text p {
     margin: 0;
     display: inline;
 }
 
-.task-text a {
+.dtl-task-text a {
     color: var(--link-color);
     text-decoration: none;
 }
 
-.task-text a:hover {
+.dtl-task-text a:hover {
     text-decoration: underline;
 }
 
 /* Style wiki-links to match Obsidian's default styling */
-.task-text .dtl-internal-link {
+.dtl-task-text .dtl-internal-link {
     color: var(--link-color);
     text-decoration: none;
 }
 
-.task-text .dtl-internal-link:hover {
+.dtl-task-text .dtl-internal-link:hover {
     text-decoration: underline;
 }
 
 /* Ensure links are properly interactive */
-.task-text .dtl-internal-link:not(.dtl-disabled-link) {
+.dtl-task-text .dtl-internal-link:not(.dtl-disabled-link) {
     color: var(--link-color);
     text-decoration: none;
     cursor: pointer;
@@ -247,29 +247,29 @@
     position: relative;
 }
 
-.task-text .dtl-internal-link:not(.dtl-disabled-link):hover {
+.dtl-task-text .dtl-internal-link:not(.dtl-disabled-link):hover {
     text-decoration: underline;
 }
 
 /* Remove pointer-events from disabled links */
-.task-text .dtl-internal-link.dtl-disabled-link {
+.dtl-task-text .dtl-internal-link.dtl-disabled-link {
     pointer-events: none;
 }
 
 /* Preserve URL link behavior */
-.task-text a:not(.dtl-internal-link):not(.dtl-disabled-link) {
+.dtl-task-text a:not(.dtl-internal-link):not(.dtl-disabled-link) {
     z-index: 3;
     position: relative;
 }
 
 /* Completed Tasks Section */
-.completed-tasks-section {
+.dtl-completed-tasks-section {
     margin-top: 16px;
     padding-top: 12px;
     border-top: 1px solid var(--background-modifier-border);
 }
 
-.completed-tasks-header {
+.dtl-completed-tasks-header {
     display: flex;
     align-items: center;
     padding: 4px 8px;
@@ -278,15 +278,15 @@
     border-radius: 4px;
 }
 
-.completed-tasks-header:hover {
+.dtl-completed-tasks-header:hover {
     background-color: var(--background-modifier-hover);
 }
 
-.completed-tasks-toggle {
+.dtl-completed-tasks-toggle {
     margin-right: 8px;
 }
 
-.completed-tasks-content {
+.dtl-completed-tasks-content {
     display: block;
     max-height: 1000px;
     opacity: 1;
@@ -295,25 +295,25 @@
     padding: 8px 0;
 }
 
-.completed-tasks-content.dtl-collapsed {
+.dtl-completed-tasks-content.dtl-collapsed {
     max-height: 0;
     opacity: 0;
     padding: 0;
 }
 
 /* Task Completion State */
-.task-completed {
+.dtl-task-completed {
     color: var(--text-muted);
     text-decoration: line-through;
     opacity: 0.8;
 }
 
-.task-completed:hover {
+.dtl-task-completed:hover {
     opacity: 1;
 }
 
 /* Empty State */
-.task-empty-state {
+.dtl-task-empty-state {
     text-align: center;
     padding: 24px;
     color: var(--text-muted);
@@ -321,137 +321,25 @@
 }
 
 /* Ensure completed tasks stay visible */
-.task-item.completed {
+.dtl-task-item.completed {
     opacity: 0.8;
     transition: opacity 0.3s ease;
 }
 
-.task-item.completed:hover {
+.dtl-task-item.completed:hover {
     opacity: 1;
 }
 
 /* Task Navigation */
-.task-text.dtl-clickable {
+.dtl-task-text.dtl-clickable {
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
-.task-text.dtl-clickable:hover {
+.dtl-task-text.dtl-clickable:hover {
     background-color: var(--background-modifier-hover);
     text-decoration: underline;
     color: var(--text-accent);
-}
-
-/* Task list styling */
-.task-list {
-    position: relative;
-    padding: 0 8px;
-    min-height: 100px;
-}
-
-.task-list-header {
-    margin-bottom: 16px;
-    color: var(--text-normal);
-}
-
-.task-section {
-    margin-bottom: 24px;
-}
-
-.task-section-header {
-    margin-bottom: 8px;
-}
-
-.task-section-title {
-    margin: 0;
-    font-size: 1.1em;
-    color: var(--text-normal);
-}
-
-.task-section-dates {
-    font-size: 0.8em;
-    color: var(--text-muted);
-    margin-top: 4px;
-}
-
-.task-list-items {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.task-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 4px 0;
-    border-radius: 4px;
-}
-
-.task-checkbox {
-    cursor: pointer;
-    color: var(--text-muted);
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-.task-checkbox:hover {
-    color: var(--text-normal);
-}
-
-.task-completed {
-    text-decoration: line-through;
-    color: var(--text-muted);
-}
-
-.completed-tasks-section {
-    margin-top: 16px;
-}
-
-.completed-tasks-header {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 4px 0;
-}
-
-.completed-tasks-header:hover {
-    color: var(--text-normal);
-}
-
-.completed-tasks-content.dtl-collapsed {
-    display: none;
-}
-
-/* Empty state styling */
-.task-empty-state {
-    color: var(--text-muted);
-    text-align: center;
-    padding: 20px;
-    font-style: italic;
-}
-
-/* Section toggle styling */
-.task-section-toggle {
-    cursor: pointer;
-    color: var(--text-muted);
-    margin-right: 4px;
-}
-
-.task-section-title-row {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-}
-
-.task-section-title-row:hover {
-    color: var(--text-normal);
-}
-
-.task-section-content.dtl-collapsed {
-    display: none;
 }
 
 /* Settings button style overrides - removed global selectors to avoid conflicts with other plugins */
@@ -468,19 +356,19 @@
 }
 
 /* Date formatting */
-.task-date-entry {
+.dtl-task-date-entry {
     display: inline-block;
     margin-right: 12px;
 }
 
 /* Completed notes section */
-.completed-notes-section {
+.dtl-completed-notes-section {
     margin-top: 24px;
     border-top: 1px solid var(--background-modifier-border);
     padding-top: 16px;
 }
 
-.completed-notes-header {
+.dtl-completed-notes-header {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -489,26 +377,20 @@
     padding: 4px 0;
 }
 
-.completed-notes-header:hover {
+.dtl-completed-notes-header:hover {
     color: var(--text-normal);
 }
 
-.completed-notes-content.dtl-collapsed {
+.dtl-completed-notes-content.dtl-collapsed {
     display: none;
 }
 
-.completed-notes-toggle {
+.dtl-completed-notes-toggle {
     margin-right: 4px;
 }
 
 /* Loading State */
-.task-list {
-    position: relative;
-    padding: 0 12px;
-    min-height: 200px;
-}
-
-.task-list-loading {
+.dtl-task-list-loading {
     position: absolute;
     inset: 0;
     background: var(--background-primary);
@@ -520,12 +402,12 @@
     transition: all 0.3s ease;
 }
 
-.task-list-loading.hidden {
+.dtl-task-list-loading.dtl-hidden {
     opacity: 0;
     pointer-events: none;
 }
 
-.task-list-loading-inner {
+.dtl-task-list-loading-inner {
     background: var(--background-secondary);
     padding: 24px 32px;
     border-radius: 8px;
@@ -539,20 +421,20 @@
     transition: transform 0.3s ease;
 }
 
-.task-list-loading.hidden .task-list-loading-inner {
+.dtl-task-list-loading.dtl-hidden .dtl-task-list-loading-inner {
     transform: translateY(10px);
 }
 
-.task-list-loading-spinner {
+.dtl-task-list-loading-spinner {
     width: 28px;
     height: 28px;
     border: 2.5px solid var(--background-modifier-border);
     border-top-color: var(--interactive-accent);
     border-radius: 50%;
-    animation: loading-spin 0.8s linear infinite;
+    animation: dtl-loading-spin 0.8s linear infinite;
 }
 
-.task-list-loading-progress {
+.dtl-task-list-loading-progress {
     width: 180px;
     height: 3px;
     background: var(--background-modifier-border);
@@ -560,59 +442,28 @@
     overflow: hidden;
 }
 
-.task-list-loading-progress-inner {
+.dtl-task-list-loading-progress-inner {
     height: 100%;
     background: var(--interactive-accent);
     width: 100%;
-    transform: scaleX(0);
+    transform: scaleX(calc(var(--progress, 0) / 100));
     transform-origin: left;
     transition: transform 0.2s ease;
 }
 
-/* Progress bar states using data attributes - generated for all values 0-100 */
-.task-list-loading-progress-inner[data-progress="0"] { transform: scaleX(0); }
-.task-list-loading-progress-inner[data-progress="1"] { transform: scaleX(0.01); }
-.task-list-loading-progress-inner[data-progress="2"] { transform: scaleX(0.02); }
-.task-list-loading-progress-inner[data-progress="3"] { transform: scaleX(0.03); }
-.task-list-loading-progress-inner[data-progress="4"] { transform: scaleX(0.04); }
-.task-list-loading-progress-inner[data-progress="5"] { transform: scaleX(0.05); }
-.task-list-loading-progress-inner[data-progress="6"] { transform: scaleX(0.06); }
-.task-list-loading-progress-inner[data-progress="7"] { transform: scaleX(0.07); }
-.task-list-loading-progress-inner[data-progress="8"] { transform: scaleX(0.08); }
-.task-list-loading-progress-inner[data-progress="9"] { transform: scaleX(0.09); }
-.task-list-loading-progress-inner[data-progress="10"] { transform: scaleX(0.1); }
-.task-list-loading-progress-inner[data-progress="15"] { transform: scaleX(0.15); }
-.task-list-loading-progress-inner[data-progress="20"] { transform: scaleX(0.2); }
-.task-list-loading-progress-inner[data-progress="25"] { transform: scaleX(0.25); }
-.task-list-loading-progress-inner[data-progress="30"] { transform: scaleX(0.3); }
-.task-list-loading-progress-inner[data-progress="35"] { transform: scaleX(0.35); }
-.task-list-loading-progress-inner[data-progress="40"] { transform: scaleX(0.4); }
-.task-list-loading-progress-inner[data-progress="45"] { transform: scaleX(0.45); }
-.task-list-loading-progress-inner[data-progress="50"] { transform: scaleX(0.5); }
-.task-list-loading-progress-inner[data-progress="55"] { transform: scaleX(0.55); }
-.task-list-loading-progress-inner[data-progress="60"] { transform: scaleX(0.6); }
-.task-list-loading-progress-inner[data-progress="65"] { transform: scaleX(0.65); }
-.task-list-loading-progress-inner[data-progress="70"] { transform: scaleX(0.7); }
-.task-list-loading-progress-inner[data-progress="75"] { transform: scaleX(0.75); }
-.task-list-loading-progress-inner[data-progress="80"] { transform: scaleX(0.8); }
-.task-list-loading-progress-inner[data-progress="85"] { transform: scaleX(0.85); }
-.task-list-loading-progress-inner[data-progress="90"] { transform: scaleX(0.9); }
-.task-list-loading-progress-inner[data-progress="95"] { transform: scaleX(0.95); }
-.task-list-loading-progress-inner[data-progress="100"] { transform: scaleX(1); }
-
-.task-list-loading-text {
+.dtl-task-list-loading-text {
     color: var(--text-muted);
     font-size: 13px;
     margin-top: 4px;
 }
 
-@keyframes loading-spin {
+@keyframes dtl-loading-spin {
     to {
         transform: rotate(360deg);
     }
 }
 
-.task-click-wrapper {
+.dtl-task-click-wrapper {
     flex: 1;
     padding: 2px 6px;
     border-radius: 4px;
@@ -624,33 +475,29 @@
 }
 
 /* Only show pointer cursor on the wrapper when not hovering over a link */
-.task-click-wrapper:not(:has(a:hover)) {
+.dtl-task-click-wrapper:not(:has(a:hover)) {
     cursor: pointer;
 }
 
-.task-text {
-    position: relative;
-}
-
 /* Preserve Obsidian's native link handling */
-.task-text .dtl-internal-link:not(.dtl-disabled-link) {
+.dtl-task-text .dtl-internal-link:not(.dtl-disabled-link) {
     color: var(--link-color);
     text-decoration: none;
 }
 
-.task-text .dtl-internal-link:not(.dtl-disabled-link):hover {
+.dtl-task-text .dtl-internal-link:not(.dtl-disabled-link):hover {
     text-decoration: underline;
 }
 
 /* Disabled link styling */
-.task-text .dtl-internal-link.dtl-disabled-link {
+.dtl-task-text .dtl-internal-link.dtl-disabled-link {
     color: inherit;
     cursor: pointer;
     text-decoration: none;
 }
 
 /* Ensure proper link layering */
-.task-text a:not(.dtl-disabled-link) {
+.dtl-task-text a:not(.dtl-disabled-link) {
     position: relative;
     z-index: 2;
 }
@@ -661,14 +508,14 @@
     cursor: pointer !important;
 }
 
-.task-text a.dtl-disabled-link {
+.dtl-task-text a.dtl-disabled-link {
     color: inherit;
     cursor: pointer;
     text-decoration: none;
     pointer-events: none;
 }
 
-.task-text a.dtl-disabled-link:hover {
+.dtl-task-text a.dtl-disabled-link:hover {
     color: var(--text-accent);
 }
 
@@ -684,7 +531,7 @@
 }
 
 /* Hide Completed Toggle Styles */
-.task-hide-completed-container {
+.dtl-task-hide-completed-container {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -695,16 +542,16 @@
     position: relative;
 }
 
-.task-hide-completed-container:hover {
+.dtl-task-hide-completed-container:hover {
     background-color: var(--background-modifier-hover);
 }
 
-.task-hide-completed-checkbox {
+.dtl-task-hide-completed-checkbox {
     margin: 0;
     cursor: pointer;
 }
 
-.task-hide-completed-label {
+.dtl-task-hide-completed-label {
     margin: 0;
     cursor: pointer;
     font-size: 0.8em;
@@ -714,7 +561,7 @@
     font-weight: normal;
 }
 
-.task-hide-completed-container:hover .task-hide-completed-label {
+.dtl-task-hide-completed-container:hover .dtl-task-hide-completed-label {
     color: var(--text-normal);
 }
 
