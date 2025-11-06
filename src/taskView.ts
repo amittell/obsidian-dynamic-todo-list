@@ -341,11 +341,11 @@ export class TaskView extends ItemView {
             this.updateLoadingProgress(100);
             setTimeout(() => {
                 if (this.loadingEl) {
-                    this.loadingEl.addClass('hidden');
+                    this.loadingEl.addClass('dtl-hidden');
                 }
             }, 300);
         } else {
-            this.loadingEl.removeClass('hidden');
+            this.loadingEl.removeClass('dtl-hidden');
         }
         
         // Ensure tasks are rendered when loading completes
@@ -361,8 +361,8 @@ export class TaskView extends ItemView {
         const progressText = this.loadingEl.querySelector('.dtl-task-list-loading-text') as HTMLElement;
 
         if (progressInner && progressText) {
-            // Use data attribute instead of style manipulation
-            progressInner.setAttribute('data-progress', Math.round(percent).toString());
+            // Use CSS custom property for smooth progress updates
+            progressInner.style.setProperty('--progress', percent.toString());
             progressText.textContent = `Loading tasks... ${Math.round(percent)}%`;
         }
     }
@@ -764,11 +764,11 @@ export class TaskView extends ItemView {
             
             if (isProcessing) return;
             isProcessing = true;
-            
+
             try {
-                checkbox.addClass('is-disabled');
+                checkbox.addClass('dtl-is-disabled');
                 const newState = !task.completed;
-                
+
                 // Update UI immediately
                 task.completed = newState;
                 setIcon(checkbox, task.completed ? 'check-square' : 'square');
@@ -789,7 +789,7 @@ export class TaskView extends ItemView {
                 new Notice('Failed to update task');
                 console.error('Task toggle error:', error);
             } finally {
-                checkbox.removeClass('is-disabled');
+                checkbox.removeClass('dtl-is-disabled');
                 isProcessing = false;
             }
         });

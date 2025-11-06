@@ -190,6 +190,12 @@
     color: var(--text-normal);
 }
 
+.dtl-task-checkbox.dtl-is-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .dtl-task-text {
     flex: 1;
     color: var(--text-normal);
@@ -396,7 +402,7 @@
     transition: all 0.3s ease;
 }
 
-.dtl-task-list-loading.hidden {
+.dtl-task-list-loading.dtl-hidden {
     opacity: 0;
     pointer-events: none;
 }
@@ -415,7 +421,7 @@
     transition: transform 0.3s ease;
 }
 
-.dtl-task-list-loading.hidden .dtl-task-list-loading-inner {
+.dtl-task-list-loading.dtl-hidden .dtl-task-list-loading-inner {
     transform: translateY(10px);
 }
 
@@ -440,41 +446,10 @@
     height: 100%;
     background: var(--interactive-accent);
     width: 100%;
-    transform: scaleX(0);
+    transform: scaleX(calc(var(--progress, 0) / 100));
     transform-origin: left;
     transition: transform 0.2s ease;
 }
-
-/* Progress bar states using data attributes - generated for all values 0-100 */
-.dtl-task-list-loading-progress-inner[data-progress="0"] { transform: scaleX(0); }
-.dtl-task-list-loading-progress-inner[data-progress="1"] { transform: scaleX(0.01); }
-.dtl-task-list-loading-progress-inner[data-progress="2"] { transform: scaleX(0.02); }
-.dtl-task-list-loading-progress-inner[data-progress="3"] { transform: scaleX(0.03); }
-.dtl-task-list-loading-progress-inner[data-progress="4"] { transform: scaleX(0.04); }
-.dtl-task-list-loading-progress-inner[data-progress="5"] { transform: scaleX(0.05); }
-.dtl-task-list-loading-progress-inner[data-progress="6"] { transform: scaleX(0.06); }
-.dtl-task-list-loading-progress-inner[data-progress="7"] { transform: scaleX(0.07); }
-.dtl-task-list-loading-progress-inner[data-progress="8"] { transform: scaleX(0.08); }
-.dtl-task-list-loading-progress-inner[data-progress="9"] { transform: scaleX(0.09); }
-.dtl-task-list-loading-progress-inner[data-progress="10"] { transform: scaleX(0.1); }
-.dtl-task-list-loading-progress-inner[data-progress="15"] { transform: scaleX(0.15); }
-.dtl-task-list-loading-progress-inner[data-progress="20"] { transform: scaleX(0.2); }
-.dtl-task-list-loading-progress-inner[data-progress="25"] { transform: scaleX(0.25); }
-.dtl-task-list-loading-progress-inner[data-progress="30"] { transform: scaleX(0.3); }
-.dtl-task-list-loading-progress-inner[data-progress="35"] { transform: scaleX(0.35); }
-.dtl-task-list-loading-progress-inner[data-progress="40"] { transform: scaleX(0.4); }
-.dtl-task-list-loading-progress-inner[data-progress="45"] { transform: scaleX(0.45); }
-.dtl-task-list-loading-progress-inner[data-progress="50"] { transform: scaleX(0.5); }
-.dtl-task-list-loading-progress-inner[data-progress="55"] { transform: scaleX(0.55); }
-.dtl-task-list-loading-progress-inner[data-progress="60"] { transform: scaleX(0.6); }
-.dtl-task-list-loading-progress-inner[data-progress="65"] { transform: scaleX(0.65); }
-.dtl-task-list-loading-progress-inner[data-progress="70"] { transform: scaleX(0.7); }
-.dtl-task-list-loading-progress-inner[data-progress="75"] { transform: scaleX(0.75); }
-.dtl-task-list-loading-progress-inner[data-progress="80"] { transform: scaleX(0.8); }
-.dtl-task-list-loading-progress-inner[data-progress="85"] { transform: scaleX(0.85); }
-.dtl-task-list-loading-progress-inner[data-progress="90"] { transform: scaleX(0.9); }
-.dtl-task-list-loading-progress-inner[data-progress="95"] { transform: scaleX(0.95); }
-.dtl-task-list-loading-progress-inner[data-progress="100"] { transform: scaleX(1); }
 
 .dtl-task-list-loading-text {
     color: var(--text-muted);
@@ -502,10 +477,6 @@
 /* Only show pointer cursor on the wrapper when not hovering over a link */
 .dtl-task-click-wrapper:not(:has(a:hover)) {
     cursor: pointer;
-}
-
-.dtl-task-text {
-    position: relative;
 }
 
 /* Preserve Obsidian's native link handling */
