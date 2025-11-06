@@ -627,7 +627,7 @@ export class TaskView extends ItemView {
                 });
 
                 const completedContent = completedSection.createDiv({
-                    cls: 'dtl-completed-tasks-content collapsed'
+                    cls: 'dtl-completed-tasks-content dtl-collapsed'
                 });
 
                 setIcon(completedToggle, 'chevron-right');
@@ -879,7 +879,7 @@ export class TaskView extends ItemView {
                     });
 
                     completedContent = completedSection.createDiv({
-                        cls: 'dtl-completed-tasks-content collapsed'
+                        cls: 'dtl-completed-tasks-content dtl-collapsed'
                     });
 
                     setIcon(completedToggle, 'chevron-right');
