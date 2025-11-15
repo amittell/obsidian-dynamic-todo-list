@@ -170,7 +170,9 @@ export class TaskView extends ItemView {
 
         // If we already have tasks, render them
         if (this.tasks.length > 0) {
-            void this.renderTaskList();
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering initial task list:', err);
+            });
         }
     }
 
@@ -191,7 +193,9 @@ export class TaskView extends ItemView {
 
         const debouncedSearch = debounce(() => {
             this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
-            void this.renderTaskList();
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering task list after search:', err);
+            });
         }, 200, true);
 
         this.searchInput.addEventListener('input', () => {
@@ -219,7 +223,9 @@ export class TaskView extends ItemView {
                 direction: direction as 'asc' | 'desc'
             };
             this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SORT, sortSelect.value);
-            void this.renderTaskList();
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering task list after sort change:', err);
+            });
         });
 
         // Create a container for the second row (action buttons)
@@ -265,7 +271,9 @@ export class TaskView extends ItemView {
         hideCompletedCheckbox.addEventListener('change', () => {
             this.hideCompleted = hideCompletedCheckbox.checked;
             this.app.saveLocalStorage(TaskView.STORAGE_KEYS.HIDE_COMPLETED, this.hideCompleted.toString());
-            void this.renderTaskList();
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering task list after hide completed toggle:', err);
+            });
         });
         
         // Store reference to checkbox for state synchronization
@@ -294,7 +302,9 @@ export class TaskView extends ItemView {
             JSON.stringify(Array.from(this.collapsedSections)));
 
         // Re-render
-        void this.renderTaskList();
+        void this.renderTaskList().catch(err => {
+            console.error('Error rendering task list after collapse all:', err);
+        });
     }
 
     private expandAll(): void {
@@ -305,7 +315,9 @@ export class TaskView extends ItemView {
         this.app.saveLocalStorage(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, '[]');
 
         // Re-render
-        void this.renderTaskList();
+        void this.renderTaskList().catch(err => {
+            console.error('Error rendering task list after expand all:', err);
+        });
     }
 
     setLoading(loading: boolean): void {
@@ -326,7 +338,9 @@ export class TaskView extends ItemView {
         
         // Ensure tasks are rendered when loading completes
         if (!loading) {
-            void this.renderTaskList();
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering task list after loading completes:', err);
+            });
         }
     }
 
@@ -953,7 +967,9 @@ export class TaskView extends ItemView {
         this.syncCheckboxState();
 
         if (!this.isLoading) {
-            void this.renderTaskList();
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering task list after update:', err);
+            });
         }
     }
     

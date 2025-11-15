@@ -30,7 +30,9 @@ export default class DynamicTodoList extends Plugin {
 
         // Start indexing tasks immediately once the layout is ready
         this.app.workspace.onLayoutReady(() => {
-            void this.indexTasks(true);
+            void this.indexTasks(true).catch(err => {
+                console.error('Error during initial task indexing:', err);
+            });
         });
 
         // Add UI elements - ribbon icon for toggling the view
@@ -325,6 +327,10 @@ export default class DynamicTodoList extends Plugin {
      * Called when the plugin is unloaded.  Handles cleanup.
      */
     onunload() {
-        // Cleanup will be handled automatically
+        // Registered events and views are cleaned up automatically by Obsidian
+        // Cancel any pending debounced operations to prevent memory leaks
+        if (this.debouncedIndex && typeof this.debouncedIndex.cancel === 'function') {
+            this.debouncedIndex.cancel();
+        }
     }
 }
