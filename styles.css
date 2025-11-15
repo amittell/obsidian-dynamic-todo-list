@@ -1,29 +1,3 @@
-.dtl-hotkey-setting button.dtl-capturing-hotkey {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-}
-
-.dtl-hotkey-setting .setting-item-control {
-    display: flex;
-    gap: 8px;
-}
-
-.dtl-hotkey-setting button:not(.dtl-clickable-icon) {
-    min-width: 140px;
-}
-
-/* Make the icons more visible */
-.dtl-hotkey-setting .dtl-clickable-icon {
-    color: var(--text-muted);
-    opacity: 0.8;
-    transition: all 0.2s ease;
-}
-
-.dtl-hotkey-setting .dtl-clickable-icon:hover {
-    color: var(--text-normal);
-    opacity: 1;
-}
-
 /* Task List Header */
 .dtl-task-list-header-section {
     margin-bottom: 20px;
