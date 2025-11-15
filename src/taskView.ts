@@ -29,7 +29,6 @@ export class TaskView extends ItemView {
     private hideCompletedLabel: HTMLLabelElement | null = null;
     private hideCompletedCheckbox: HTMLInputElement | null = null;
     private fileStatsCache = new Map<string, {ctime: number, mtime: number, expires: number}>();
-    private pendingFileStats = new Map<string, Promise<{ctime: number, mtime: number} | null>>();
 
     getIsLoading(): boolean {
         return this.isLoading;
@@ -76,51 +75,32 @@ export class TaskView extends ItemView {
         }
     }
 
-    private async getFileStats(file: TFile): Promise<{ctime: number, mtime: number} | null> {
+    private getFileStats(file: TFile): {ctime: number, mtime: number} | null {
         const now = Date.now();
         const cached = this.fileStatsCache.get(file.path);
-        
+
         // Use cached stats if they're less than 30 seconds old
         if (cached && cached.expires > now) {
             return {ctime: cached.ctime, mtime: cached.mtime};
         }
-        
-        // Check if there's already a pending request for this file
-        const pending = this.pendingFileStats.get(file.path);
-        if (pending) {
-            return pending;
-        }
-        
+
         // Clean up expired entries periodically
         if (this.fileStatsCache.size > 100) {
             this.cleanupExpiredCache();
         }
-        
-        // Create new request and cache the promise to prevent race conditions
-        const promise = Promise.resolve(this.fetchFileStats(file.path, now));
-        this.pendingFileStats.set(file.path, promise);
 
-        try {
-            const result = await promise;
-            return result;
-        } finally {
-            // Always clean up the pending request when done
-            this.pendingFileStats.delete(file.path);
-        }
-    }
-
-    private fetchFileStats(filePath: string, requestTime: number): {ctime: number, mtime: number} | null {
+        // Get file stats synchronously
         try {
             // Use Vault API instead of Adapter API
-            const file = this.app.vault.getFileByPath(filePath);
-            if (file && file.stat) {
+            const fileData = this.app.vault.getFileByPath(file.path);
+            if (fileData && fileData.stat) {
                 // Cache for 30 seconds
-                this.fileStatsCache.set(filePath, {
-                    ctime: file.stat.ctime,
-                    mtime: file.stat.mtime,
-                    expires: requestTime + 30000
+                this.fileStatsCache.set(file.path, {
+                    ctime: fileData.stat.ctime,
+                    mtime: fileData.stat.mtime,
+                    expires: now + 30000
                 });
-                return {ctime: file.stat.ctime, mtime: file.stat.mtime};
+                return {ctime: fileData.stat.ctime, mtime: fileData.stat.mtime};
             }
             return null;
         } catch (error) {
@@ -129,13 +109,13 @@ export class TaskView extends ItemView {
         }
     }
 
-    private async getFileCreationDate(file: TFile): Promise<string> {
-        const stats = await this.getFileStats(file);
+    private getFileCreationDate(file: TFile): string {
+        const stats = this.getFileStats(file);
         return stats ? new Date(stats.ctime).toLocaleDateString() : '';
     }
 
-    private async getFileModifiedDate(file: TFile): Promise<string> {
-        const stats = await this.getFileStats(file);
+    private getFileModifiedDate(file: TFile): string {
+        const stats = this.getFileStats(file);
         return stats ? new Date(stats.mtime).toLocaleDateString() : '';
     }
 
@@ -151,12 +131,6 @@ export class TaskView extends ItemView {
     private getSortedTasks(tasks: Task[]): Task[] {
         const sortValue = this.getSortValue();
         return this.sortTasks(tasks, sortValue);
-    }
-
-    private async preloadFileStats(tasks: Task[]): Promise<void> {
-        const uniqueFiles = new Set(tasks.map(task => task.sourceFile));
-        const promises = Array.from(uniqueFiles).map(file => this.getFileStats(file));
-        await Promise.allSettled(promises);
     }
 
     async onOpen(): Promise<void> {
@@ -436,11 +410,6 @@ export class TaskView extends ItemView {
         // Filter tasks
         const filteredTasks = this.filterTasks();
 
-        // Preload file stats if needed
-        if (this.plugin.settings.showFileHeaders && this.plugin.settings.showFileHeaderDates) {
-            await this.preloadFileStats(filteredTasks);
-        }
-
         // Check if we should show file headers
         if (this.plugin.settings.showFileHeaders) {
             // Sorting is handled inside renderTaskListWithHeaders
@@ -574,8 +543,8 @@ export class TaskView extends ItemView {
         // Add date information if setting is enabled
         if (file && this.plugin.settings.showFileHeaderDates) {
             const dateInfo = header.createDiv({ cls: 'dtl-task-section-dates' });
-            const createdDate = await this.getFileCreationDate(file);
-            const modifiedDate = await this.getFileModifiedDate(file);
+            const createdDate = this.getFileCreationDate(file);
+            const modifiedDate = this.getFileModifiedDate(file);
 
             if (createdDate) {
                 dateInfo.createDiv({
@@ -984,12 +953,11 @@ export class TaskView extends ItemView {
     async onClose(): Promise<void> {
         // Clean up caches to prevent memory leaks
         this.fileStatsCache.clear();
-        this.pendingFileStats.clear();
-        
+
         // Clean up existing markdown components
         this.markdownComponents.forEach(component => component.unload());
         this.markdownComponents = [];
-        
+
         await super.onClose();
     }
 }
