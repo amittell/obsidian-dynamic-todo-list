@@ -275,6 +275,14 @@ export default class DynamicTodoList extends Plugin {
      */
     async loadSettings(): Promise<void> {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+
+        // Migrate old 'lastModified' field name to 'modified' (backward compatibility)
+        // Using type assertion to handle legacy field value
+        const legacyField = this.settings?.sortPreference?.field as string;
+        if (legacyField === 'lastModified') {
+            this.settings.sortPreference.field = 'modified';
+            await this.saveSettings(); // Persist the migration
+        }
     }
 
     /**

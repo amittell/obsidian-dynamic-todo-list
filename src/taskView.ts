@@ -400,23 +400,35 @@ export class TaskView extends ItemView {
     }
 
     private async renderTaskList() {
-        // Clean up existing components
-        this.markdownComponents.forEach(component => component.unload());
-        this.markdownComponents = [];
+        try {
+            // Clean up existing components
+            this.markdownComponents.forEach(component => component.unload());
+            this.markdownComponents = [];
 
-        if (!this.taskListContainer) return;
-        this.taskListContainer.empty();
+            if (!this.taskListContainer) return;
+            this.taskListContainer.empty();
 
-        // Filter tasks
-        const filteredTasks = this.filterTasks();
+            // Filter tasks
+            const filteredTasks = this.filterTasks();
 
-        // Check if we should show file headers
-        if (this.plugin.settings.showFileHeaders) {
-            // Sorting is handled inside renderTaskListWithHeaders
-            await this.renderTaskListWithHeaders(filteredTasks);
-        } else {
-            // Sorting is handled inside renderFlatTaskList
-            this.renderFlatTaskList(filteredTasks);
+            // Check if we should show file headers
+            if (this.plugin.settings.showFileHeaders) {
+                // Sorting is handled inside renderTaskListWithHeaders
+                await this.renderTaskListWithHeaders(filteredTasks);
+            } else {
+                // Sorting is handled inside renderFlatTaskList
+                this.renderFlatTaskList(filteredTasks);
+            }
+        } catch (error) {
+            console.error('Error rendering task list:', error);
+            // Show error state in UI
+            if (this.taskListContainer) {
+                this.taskListContainer.empty();
+                this.taskListContainer.createEl('div', {
+                    cls: 'dtl-task-empty-state',
+                    text: 'Error loading tasks. Please try refreshing the view.'
+                });
+            }
         }
     }
 
