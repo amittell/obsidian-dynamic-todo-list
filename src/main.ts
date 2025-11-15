@@ -297,6 +297,14 @@ export default class DynamicTodoList extends Plugin {
             this.settings.sortPreference.field = 'modified';
             await this.saveSettings(); // Persist the migration
         }
+
+        // Migrate localStorage SORT value from 'lastModified-*' to 'modified-*'
+        const localStorageSortKey = 'dynamic-todo-list-sort';
+        const savedSort = this.app.loadLocalStorage(localStorageSortKey);
+        if (savedSort && savedSort.startsWith('lastModified-')) {
+            const migratedSort = savedSort.replace('lastModified-', 'modified-');
+            this.app.saveLocalStorage(localStorageSortKey, migratedSort);
+        }
     }
 
     /**

@@ -276,7 +276,9 @@ export class TaskView extends ItemView {
      * Refreshes the view to reflect any setting changes
      */
     public refreshSettings(): void {
-        void this.renderTaskList();
+        void this.renderTaskList().catch(err => {
+            console.error('Error refreshing task list after settings change:', err);
+        });
     }
 
     private collapseAll(): void {
