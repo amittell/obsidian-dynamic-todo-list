@@ -215,7 +215,7 @@ export class TaskView extends ItemView {
         sortSelect.addEventListener('change', () => {
             const [field, direction] = sortSelect.value.split('-');
             this.processor.settings.sortPreference = {
-                field: field as 'name' | 'created' | 'lastModified',
+                field: field as 'name' | 'created' | 'modified',
                 direction: direction as 'asc' | 'desc'
             };
             this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SORT, sortSelect.value);

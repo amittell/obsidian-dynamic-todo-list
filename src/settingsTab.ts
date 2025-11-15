@@ -117,13 +117,13 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 .addOption('name-desc', 'Name (Z to A)')  // Sort by file name (descending)
                 .addOption('created-desc', 'Created (newest)') // Sort by file creation date (descending)
                 .addOption('created-asc', 'Created (oldest)') // Sort by file creation date (ascending)
-                .addOption('lastModified-desc', 'Modified (newest)') // Sort by file modification date (descending)
-                .addOption('lastModified-asc', 'Modified (oldest)') // Sort by file modification date (ascending)
+                .addOption('modified-desc', 'Modified (newest)') // Sort by file modification date (descending)
+                .addOption('modified-asc', 'Modified (oldest)') // Sort by file modification date (ascending)
                 .setValue(`${this.plugin.settings.sortPreference.field}-${this.plugin.settings.sortPreference.direction}`) // Set the current value
                 .onChange(async (value) => { // Handle value changes
                     const [field, direction] = value.split('-'); // Split the value into field and direction
                     this.plugin.settings.sortPreference = {
-                        field: field as 'name' | 'created' | 'lastModified', // Type assertion for field
+                        field: field as 'name' | 'created' | 'modified', // Type assertion for field
                         direction: direction as 'asc' | 'desc' // Type assertion for direction
                     };
                     await this.plugin.saveSettings(); // Save the new setting

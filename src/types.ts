@@ -14,7 +14,7 @@ export interface PluginSettings {
       exclude: string[]; // List of folders to exclude
   };
   sortPreference: { // Added sort preference
-      field: 'created' | 'lastModified' | 'name'; // Field to sort by
+      field: 'created' | 'modified' | 'name'; // Field to sort by
       direction: 'asc' | 'desc'; // Sort direction
   };
   archiveCompletedOlderThan: number; // Added archive setting for completed tasks
@@ -60,7 +60,7 @@ export const DEFAULT_SETTINGS: Readonly<PluginSettings> = {
       exclude: []
   },
   sortPreference: { // Default sort preference: last modified, descending
-      field: 'lastModified',
+      field: 'modified',
       direction: 'desc'
   },
   archiveCompletedOlderThan: 90, // Default: 90 days
