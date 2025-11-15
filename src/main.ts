@@ -120,10 +120,12 @@ export default class DynamicTodoList extends Plugin {
                     // Filter out tasks from the deleted file
                     this.tasks = this.tasks.filter(t => t.sourceFile.path !== file.path);
 
-                    // Update the view if it's open
+                    // Update the view if it's open and not currently loading
                     const views = this.getTaskViews();
                     views.forEach(view => {
-                        view.updateTasks(this.tasks);
+                        if (!view.getIsLoading()) {
+                            view.updateTasks(this.tasks);
+                        }
                     });
                 }
             })
@@ -297,7 +299,7 @@ export default class DynamicTodoList extends Plugin {
         const legacyField = this.settings?.sortPreference?.field as string;
         if (legacyField === 'lastModified') {
             this.settings.sortPreference.field = 'modified';
-            await this.saveSettings(); // Persist the migration
+            await this.saveData(this.settings); // Persist migration without reinit
         }
 
         // Migrate localStorage SORT value from 'lastModified-*' to 'modified-*'

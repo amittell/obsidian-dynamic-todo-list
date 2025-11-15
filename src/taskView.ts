@@ -192,7 +192,8 @@ export class TaskView extends ItemView {
         });
 
         const debouncedSearch = debounce(() => {
-            this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
+            if (!this.searchInput) return;
+            this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SEARCH, this.searchInput.value);
             void this.renderTaskList().catch(err => {
                 console.error('Error rendering task list after search:', err);
             });
