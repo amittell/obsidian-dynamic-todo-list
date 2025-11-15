@@ -108,8 +108,22 @@ export default class DynamicTodoList extends Plugin {
         );
 
         this.registerEvent(
-            this.app.vault.on('delete', () => {
-                void this.indexTasks(false); // Re-index on file deletion
+            this.app.vault.on('delete', (file) => {
+                // Only process markdown files
+                if (!(file instanceof TFile) || file.extension !== 'md') return;
+
+                // Remove tasks from the deleted file incrementally (avoid full reindex)
+                const hadTasks = this.tasks.some(t => t.sourceFile.path === file.path);
+                if (hadTasks) {
+                    // Filter out tasks from the deleted file
+                    this.tasks = this.tasks.filter(t => t.sourceFile.path !== file.path);
+
+                    // Update the view if it's open
+                    const views = this.getTaskViews();
+                    views.forEach(view => {
+                        view.updateTasks(this.tasks);
+                    });
+                }
             })
         );
 
