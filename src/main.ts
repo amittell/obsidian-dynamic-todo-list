@@ -30,7 +30,7 @@ export default class DynamicTodoList extends Plugin {
 
         // Start indexing tasks immediately once the layout is ready
         this.app.workspace.onLayoutReady(() => {
-            this.indexTasks(true);
+            void this.indexTasks(true);
         });
 
         // Add UI elements - ribbon icon for toggling the view
@@ -109,7 +109,7 @@ export default class DynamicTodoList extends Plugin {
 
         this.registerEvent(
             this.app.vault.on('delete', () => {
-                this.indexTasks(false); // Re-index on file deletion
+                void this.indexTasks(false); // Re-index on file deletion
             })
         );
 
@@ -261,7 +261,7 @@ export default class DynamicTodoList extends Plugin {
     /**
      * Refreshes all task views if they're not currently loading.
      */
-    async refreshTaskView(): Promise<void> {
+    refreshTaskView(): void {
         const views = this.getTaskViews();
         views.forEach(view => {
             if (!view.getIsLoading()) {

@@ -158,7 +158,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.showFileHeaders = value;
                     await this.plugin.saveSettings();
-                    await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    this.plugin.refreshTaskView(); // Refresh view to apply changes
                     this.display(); // Re-render settings to show/hide conditional setting
                 }));
 
@@ -172,7 +172,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.showFileHeaderDates = value;
                         await this.plugin.saveSettings();
-                        await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                        this.plugin.refreshTaskView(); // Refresh view to apply changes
                     }));
             
             // Style as a sub-setting with indentation
@@ -189,7 +189,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.moveCompletedTasksToBottom = value;
                         await this.plugin.saveSettings();
-                        await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                        this.plugin.refreshTaskView(); // Refresh view to apply changes
                     }));
             
             // Style as a sub-setting with indentation
@@ -205,7 +205,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 .onChange(async (value) => { // Handle value changes
                     this.plugin.settings.enableWikiLinks = value;
                     await this.plugin.saveSettings(); // Save setting
-                    await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    this.plugin.refreshTaskView(); // Refresh view to apply changes
                 }));
 
         // Setting to enable/disable URL links in the task view
@@ -217,7 +217,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 .onChange(async (value) => { // Handle value changes
                     this.plugin.settings.enableUrlLinks = value;
                     await this.plugin.saveSettings();  // Save setting
-                    await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    this.plugin.refreshTaskView(); // Refresh view to apply changes
                 }));
 
         // Include folders

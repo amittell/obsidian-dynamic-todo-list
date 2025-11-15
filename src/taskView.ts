@@ -97,9 +97,9 @@ export class TaskView extends ItemView {
         }
         
         // Create new request and cache the promise to prevent race conditions
-        const promise = this.fetchFileStats(file.path, now);
+        const promise = Promise.resolve(this.fetchFileStats(file.path, now));
         this.pendingFileStats.set(file.path, promise);
-        
+
         try {
             const result = await promise;
             return result;
@@ -109,7 +109,7 @@ export class TaskView extends ItemView {
         }
     }
 
-    private async fetchFileStats(filePath: string, requestTime: number): Promise<{ctime: number, mtime: number} | null> {
+    private fetchFileStats(filePath: string, requestTime: number): {ctime: number, mtime: number} | null {
         try {
             // Use Vault API instead of Adapter API
             const file = this.app.vault.getFileByPath(filePath);
@@ -189,18 +189,18 @@ export class TaskView extends ItemView {
         });
 
         // Set up controls (now with the correct state already restored)
-        await this.setupSearchAndSort(controlsSection);
+        this.setupSearchAndSort(controlsSection);
 
         // Set initial loading state
         this.setLoading(this.isLoading);
 
         // If we already have tasks, render them
         if (this.tasks.length > 0) {
-            this.renderTaskList();
+            void this.renderTaskList();
         }
     }
 
-    private async setupSearchAndSort(controlsSection: HTMLElement): Promise<void> {
+    private setupSearchAndSort(controlsSection: HTMLElement): void {
         // Create a container for the first row (search and sort)
         const firstRow = controlsSection.createDiv({ cls: 'dtl-task-controls-row' });
 
@@ -217,7 +217,7 @@ export class TaskView extends ItemView {
 
         const debouncedSearch = debounce(() => {
             this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
-            this.renderTaskList();
+            void this.renderTaskList();
         }, 200, true);
 
         this.searchInput.addEventListener('input', () => {
@@ -245,7 +245,7 @@ export class TaskView extends ItemView {
                 direction: direction as 'asc' | 'desc'
             };
             this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SORT, sortSelect.value);
-            this.renderTaskList();
+            void this.renderTaskList();
         });
 
         // Create a container for the second row (action buttons)
@@ -291,7 +291,7 @@ export class TaskView extends ItemView {
         hideCompletedCheckbox.addEventListener('change', () => {
             this.hideCompleted = hideCompletedCheckbox.checked;
             this.app.saveLocalStorage(TaskView.STORAGE_KEYS.HIDE_COMPLETED, this.hideCompleted.toString());
-            this.renderTaskList();
+            void this.renderTaskList();
         });
         
         // Store reference to checkbox for state synchronization
@@ -302,7 +302,7 @@ export class TaskView extends ItemView {
      * Refreshes the view to reflect any setting changes
      */
     public refreshSettings(): void {
-        this.renderTaskList();
+        void this.renderTaskList();
     }
 
     private collapseAll(): void {
@@ -314,11 +314,11 @@ export class TaskView extends ItemView {
         this.collapsedSections = new Set(allPaths);
         
         // Save state
-        this.app.saveLocalStorage(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, 
+        this.app.saveLocalStorage(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS,
             JSON.stringify(Array.from(this.collapsedSections)));
-        
+
         // Re-render
-        this.renderTaskList();
+        void this.renderTaskList();
     }
 
     private expandAll(): void {
@@ -327,9 +327,9 @@ export class TaskView extends ItemView {
         
         // Save state
         this.app.saveLocalStorage(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, '[]');
-        
+
         // Re-render
-        this.renderTaskList();
+        void this.renderTaskList();
     }
 
     setLoading(loading: boolean): void {
@@ -350,7 +350,7 @@ export class TaskView extends ItemView {
         
         // Ensure tasks are rendered when loading completes
         if (!loading) {
-            this.renderTaskList();
+            void this.renderTaskList();
         }
     }
 
@@ -447,7 +447,7 @@ export class TaskView extends ItemView {
             await this.renderTaskListWithHeaders(filteredTasks);
         } else {
             // Sorting is handled inside renderFlatTaskList
-            await this.renderFlatTaskList(filteredTasks);
+            this.renderFlatTaskList(filteredTasks);
         }
     }
 
@@ -509,7 +509,7 @@ export class TaskView extends ItemView {
         }
     }
 
-    private async renderFlatTaskList(filteredTasks: Task[]) {
+    private renderFlatTaskList(filteredTasks: Task[]): void {
         if (filteredTasks.length === 0) {
             this.taskListContainer!.createEl('div', {
                 cls: 'dtl-task-empty-state',
@@ -699,7 +699,7 @@ export class TaskView extends ItemView {
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        
+
                         const linkText = link.getAttribute('data-href') || link.textContent;
                         if (!linkText) return;
 
@@ -743,7 +743,7 @@ export class TaskView extends ItemView {
                                 target.closest('a:not(.internal-link)');
                 const isWikiLink = target.matches('.internal-link') ||
                                 target.closest('.internal-link');
-                
+
                 // Don't interfere with enabled links
                 if ((isUrlLink && this.processor.settings.enableUrlLinks) ||
                     (isWikiLink && this.processor.settings.enableWikiLinks)) {
@@ -754,6 +754,8 @@ export class TaskView extends ItemView {
                 e.stopPropagation();
                 this.handleTaskClick(task);
             });
+        }).catch(error => {
+            console.error('Error rendering markdown:', error);
         });
 
         // Add checkbox handler with debounce
@@ -842,7 +844,7 @@ export class TaskView extends ItemView {
         // trigger a full re-render to move the file to completed notes
         if (openTasks.length === 0 && completedTasks.length > 0 &&
             section.closest('.dtl-active-notes-section')) {
-            this.renderTaskList();
+            await this.renderTaskList();
             return;
         }
 
@@ -966,9 +968,9 @@ export class TaskView extends ItemView {
         
         // Sync checkbox state to ensure visual and functional states match
         this.syncCheckboxState();
-        
+
         if (!this.isLoading) {
-            this.renderTaskList();
+            void this.renderTaskList();
         }
     }
     
