@@ -30,7 +30,9 @@ export default class DynamicTodoList extends Plugin {
 
         // Start indexing tasks immediately once the layout is ready
         this.app.workspace.onLayoutReady(() => {
-            this.indexTasks(true);
+            void this.indexTasks(true).catch(err => {
+                console.error('Error during initial task indexing:', err);
+            });
         });
 
         // Add UI elements - ribbon icon for toggling the view
@@ -108,8 +110,24 @@ export default class DynamicTodoList extends Plugin {
         );
 
         this.registerEvent(
-            this.app.vault.on('delete', () => {
-                this.indexTasks(false); // Re-index on file deletion
+            this.app.vault.on('delete', (file) => {
+                // Only process markdown files
+                if (!(file instanceof TFile) || file.extension !== 'md') return;
+
+                // Remove tasks from the deleted file incrementally (avoid full reindex)
+                const hadTasks = this.tasks.some(t => t.sourceFile.path === file.path);
+                if (hadTasks) {
+                    // Filter out tasks from the deleted file
+                    this.tasks = this.tasks.filter(t => t.sourceFile.path !== file.path);
+
+                    // Update the view if it's open and not currently loading
+                    const views = this.getTaskViews();
+                    views.forEach(view => {
+                        if (!view.getIsLoading()) {
+                            view.updateTasks(this.tasks);
+                        }
+                    });
+                }
             })
         );
 
@@ -261,7 +279,7 @@ export default class DynamicTodoList extends Plugin {
     /**
      * Refreshes all task views if they're not currently loading.
      */
-    async refreshTaskView(): Promise<void> {
+    refreshTaskView(): void {
         const views = this.getTaskViews();
         views.forEach(view => {
             if (!view.getIsLoading()) {
@@ -275,6 +293,22 @@ export default class DynamicTodoList extends Plugin {
      */
     async loadSettings(): Promise<void> {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+
+        // Migrate old 'lastModified' field name to 'modified' (backward compatibility)
+        // Using type assertion to handle legacy field value
+        const legacyField = this.settings?.sortPreference?.field as string;
+        if (legacyField === 'lastModified') {
+            this.settings.sortPreference.field = 'modified';
+            await this.saveData(this.settings); // Persist migration without reinit
+        }
+
+        // Migrate localStorage SORT value from 'lastModified-*' to 'modified-*'
+        const localStorageSortKey = 'dynamic-todo-list-sort';
+        const savedSort = this.app.loadLocalStorage(localStorageSortKey);
+        if (typeof savedSort === 'string' && savedSort.startsWith('lastModified-')) {
+            const migratedSort = savedSort.replace('lastModified-', 'modified-');
+            this.app.saveLocalStorage(localStorageSortKey, migratedSort);
+        }
     }
 
     /**
@@ -294,7 +328,11 @@ export default class DynamicTodoList extends Plugin {
     /**
      * Called when the plugin is unloaded.  Handles cleanup.
      */
-    async onunload() {
-        // Cleanup will be handled automatically
+    onunload() {
+        // Registered events and views are cleaned up automatically by Obsidian
+        // Cancel any pending debounced operations to prevent memory leaks
+        if (this.debouncedIndex && typeof this.debouncedIndex.cancel === 'function') {
+            this.debouncedIndex.cancel();
+        }
     }
 }

@@ -29,7 +29,6 @@ export class TaskView extends ItemView {
     private hideCompletedLabel: HTMLLabelElement | null = null;
     private hideCompletedCheckbox: HTMLInputElement | null = null;
     private fileStatsCache = new Map<string, {ctime: number, mtime: number, expires: number}>();
-    private pendingFileStats = new Map<string, Promise<{ctime: number, mtime: number} | null>>();
 
     getIsLoading(): boolean {
         return this.isLoading;
@@ -76,51 +75,32 @@ export class TaskView extends ItemView {
         }
     }
 
-    private async getFileStats(file: TFile): Promise<{ctime: number, mtime: number} | null> {
+    private getFileStats(file: TFile): {ctime: number, mtime: number} | null {
         const now = Date.now();
         const cached = this.fileStatsCache.get(file.path);
-        
+
         // Use cached stats if they're less than 30 seconds old
         if (cached && cached.expires > now) {
             return {ctime: cached.ctime, mtime: cached.mtime};
         }
-        
-        // Check if there's already a pending request for this file
-        const pending = this.pendingFileStats.get(file.path);
-        if (pending) {
-            return pending;
-        }
-        
+
         // Clean up expired entries periodically
         if (this.fileStatsCache.size > 100) {
             this.cleanupExpiredCache();
         }
-        
-        // Create new request and cache the promise to prevent race conditions
-        const promise = this.fetchFileStats(file.path, now);
-        this.pendingFileStats.set(file.path, promise);
-        
-        try {
-            const result = await promise;
-            return result;
-        } finally {
-            // Always clean up the pending request when done
-            this.pendingFileStats.delete(file.path);
-        }
-    }
 
-    private async fetchFileStats(filePath: string, requestTime: number): Promise<{ctime: number, mtime: number} | null> {
+        // Get file stats synchronously
         try {
             // Use Vault API instead of Adapter API
-            const file = this.app.vault.getFileByPath(filePath);
-            if (file && file.stat) {
+            const fileData = this.app.vault.getFileByPath(file.path);
+            if (fileData && fileData.stat) {
                 // Cache for 30 seconds
-                this.fileStatsCache.set(filePath, {
-                    ctime: file.stat.ctime,
-                    mtime: file.stat.mtime,
-                    expires: requestTime + 30000
+                this.fileStatsCache.set(file.path, {
+                    ctime: fileData.stat.ctime,
+                    mtime: fileData.stat.mtime,
+                    expires: now + 30000
                 });
-                return {ctime: file.stat.ctime, mtime: file.stat.mtime};
+                return {ctime: fileData.stat.ctime, mtime: fileData.stat.mtime};
             }
             return null;
         } catch (error) {
@@ -129,13 +109,13 @@ export class TaskView extends ItemView {
         }
     }
 
-    private async getFileCreationDate(file: TFile): Promise<string> {
-        const stats = await this.getFileStats(file);
+    private getFileCreationDate(file: TFile): string {
+        const stats = this.getFileStats(file);
         return stats ? new Date(stats.ctime).toLocaleDateString() : '';
     }
 
-    private async getFileModifiedDate(file: TFile): Promise<string> {
-        const stats = await this.getFileStats(file);
+    private getFileModifiedDate(file: TFile): string {
+        const stats = this.getFileStats(file);
         return stats ? new Date(stats.mtime).toLocaleDateString() : '';
     }
 
@@ -151,12 +131,6 @@ export class TaskView extends ItemView {
     private getSortedTasks(tasks: Task[]): Task[] {
         const sortValue = this.getSortValue();
         return this.sortTasks(tasks, sortValue);
-    }
-
-    private async preloadFileStats(tasks: Task[]): Promise<void> {
-        const uniqueFiles = new Set(tasks.map(task => task.sourceFile));
-        const promises = Array.from(uniqueFiles).map(file => this.getFileStats(file));
-        await Promise.allSettled(promises);
     }
 
     async onOpen(): Promise<void> {
@@ -189,18 +163,20 @@ export class TaskView extends ItemView {
         });
 
         // Set up controls (now with the correct state already restored)
-        await this.setupSearchAndSort(controlsSection);
+        this.setupSearchAndSort(controlsSection);
 
         // Set initial loading state
         this.setLoading(this.isLoading);
 
         // If we already have tasks, render them
         if (this.tasks.length > 0) {
-            this.renderTaskList();
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering initial task list:', err);
+            });
         }
     }
 
-    private async setupSearchAndSort(controlsSection: HTMLElement): Promise<void> {
+    private setupSearchAndSort(controlsSection: HTMLElement): void {
         // Create a container for the first row (search and sort)
         const firstRow = controlsSection.createDiv({ cls: 'dtl-task-controls-row' });
 
@@ -216,8 +192,11 @@ export class TaskView extends ItemView {
         });
 
         const debouncedSearch = debounce(() => {
-            this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SEARCH, this.searchInput!.value);
-            this.renderTaskList();
+            if (!this.searchInput) return;
+            this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SEARCH, this.searchInput.value);
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering task list after search:', err);
+            });
         }, 200, true);
 
         this.searchInput.addEventListener('input', () => {
@@ -241,11 +220,13 @@ export class TaskView extends ItemView {
         sortSelect.addEventListener('change', () => {
             const [field, direction] = sortSelect.value.split('-');
             this.processor.settings.sortPreference = {
-                field: field as 'name' | 'created' | 'lastModified',
+                field: field as 'name' | 'created' | 'modified',
                 direction: direction as 'asc' | 'desc'
             };
             this.app.saveLocalStorage(TaskView.STORAGE_KEYS.SORT, sortSelect.value);
-            this.renderTaskList();
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering task list after sort change:', err);
+            });
         });
 
         // Create a container for the second row (action buttons)
@@ -291,7 +272,9 @@ export class TaskView extends ItemView {
         hideCompletedCheckbox.addEventListener('change', () => {
             this.hideCompleted = hideCompletedCheckbox.checked;
             this.app.saveLocalStorage(TaskView.STORAGE_KEYS.HIDE_COMPLETED, this.hideCompleted.toString());
-            this.renderTaskList();
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering task list after hide completed toggle:', err);
+            });
         });
         
         // Store reference to checkbox for state synchronization
@@ -302,7 +285,9 @@ export class TaskView extends ItemView {
      * Refreshes the view to reflect any setting changes
      */
     public refreshSettings(): void {
-        this.renderTaskList();
+        void this.renderTaskList().catch(err => {
+            console.error('Error refreshing task list after settings change:', err);
+        });
     }
 
     private collapseAll(): void {
@@ -314,11 +299,13 @@ export class TaskView extends ItemView {
         this.collapsedSections = new Set(allPaths);
         
         // Save state
-        this.app.saveLocalStorage(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, 
+        this.app.saveLocalStorage(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS,
             JSON.stringify(Array.from(this.collapsedSections)));
-        
+
         // Re-render
-        this.renderTaskList();
+        void this.renderTaskList().catch(err => {
+            console.error('Error rendering task list after collapse all:', err);
+        });
     }
 
     private expandAll(): void {
@@ -327,9 +314,11 @@ export class TaskView extends ItemView {
         
         // Save state
         this.app.saveLocalStorage(TaskView.STORAGE_KEYS.COLLAPSED_SECTIONS, '[]');
-        
+
         // Re-render
-        this.renderTaskList();
+        void this.renderTaskList().catch(err => {
+            console.error('Error rendering task list after expand all:', err);
+        });
     }
 
     setLoading(loading: boolean): void {
@@ -350,7 +339,9 @@ export class TaskView extends ItemView {
         
         // Ensure tasks are rendered when loading completes
         if (!loading) {
-            this.renderTaskList();
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering task list after loading completes:', err);
+            });
         }
     }
 
@@ -426,28 +417,35 @@ export class TaskView extends ItemView {
     }
 
     private async renderTaskList() {
-        // Clean up existing components
-        this.markdownComponents.forEach(component => component.unload());
-        this.markdownComponents = [];
+        try {
+            // Clean up existing components
+            this.markdownComponents.forEach(component => component.unload());
+            this.markdownComponents = [];
 
-        if (!this.taskListContainer) return;
-        this.taskListContainer.empty();
+            if (!this.taskListContainer) return;
+            this.taskListContainer.empty();
 
-        // Filter tasks
-        const filteredTasks = this.filterTasks();
+            // Filter tasks
+            const filteredTasks = this.filterTasks();
 
-        // Preload file stats if needed
-        if (this.plugin.settings.showFileHeaders && this.plugin.settings.showFileHeaderDates) {
-            await this.preloadFileStats(filteredTasks);
-        }
-
-        // Check if we should show file headers
-        if (this.plugin.settings.showFileHeaders) {
-            // Sorting is handled inside renderTaskListWithHeaders
-            await this.renderTaskListWithHeaders(filteredTasks);
-        } else {
-            // Sorting is handled inside renderFlatTaskList
-            await this.renderFlatTaskList(filteredTasks);
+            // Check if we should show file headers
+            if (this.plugin.settings.showFileHeaders) {
+                // Sorting is handled inside renderTaskListWithHeaders
+                await this.renderTaskListWithHeaders(filteredTasks);
+            } else {
+                // Sorting is handled inside renderFlatTaskList
+                this.renderFlatTaskList(filteredTasks);
+            }
+        } catch (error) {
+            console.error('Error rendering task list:', error);
+            // Show error state in UI
+            if (this.taskListContainer) {
+                this.taskListContainer.empty();
+                this.taskListContainer.createEl('div', {
+                    cls: 'dtl-task-empty-state',
+                    text: 'Error loading tasks. Please try refreshing the view.'
+                });
+            }
         }
     }
 
@@ -509,7 +507,7 @@ export class TaskView extends ItemView {
         }
     }
 
-    private async renderFlatTaskList(filteredTasks: Task[]) {
+    private renderFlatTaskList(filteredTasks: Task[]): void {
         if (filteredTasks.length === 0) {
             this.taskListContainer!.createEl('div', {
                 cls: 'dtl-task-empty-state',
@@ -574,8 +572,8 @@ export class TaskView extends ItemView {
         // Add date information if setting is enabled
         if (file && this.plugin.settings.showFileHeaderDates) {
             const dateInfo = header.createDiv({ cls: 'dtl-task-section-dates' });
-            const createdDate = await this.getFileCreationDate(file);
-            const modifiedDate = await this.getFileModifiedDate(file);
+            const createdDate = this.getFileCreationDate(file);
+            const modifiedDate = this.getFileModifiedDate(file);
 
             if (createdDate) {
                 dateInfo.createDiv({
@@ -699,7 +697,7 @@ export class TaskView extends ItemView {
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        
+
                         const linkText = link.getAttribute('data-href') || link.textContent;
                         if (!linkText) return;
 
@@ -743,7 +741,7 @@ export class TaskView extends ItemView {
                                 target.closest('a:not(.internal-link)');
                 const isWikiLink = target.matches('.internal-link') ||
                                 target.closest('.internal-link');
-                
+
                 // Don't interfere with enabled links
                 if ((isUrlLink && this.processor.settings.enableUrlLinks) ||
                     (isWikiLink && this.processor.settings.enableWikiLinks)) {
@@ -754,6 +752,8 @@ export class TaskView extends ItemView {
                 e.stopPropagation();
                 this.handleTaskClick(task);
             });
+        }).catch(error => {
+            console.error('Error rendering markdown:', error);
         });
 
         // Add checkbox handler with debounce
@@ -807,7 +807,7 @@ export class TaskView extends ItemView {
 
         if (existingLeaf) {
             // Activate and focus the existing leaf
-            await this.app.workspace.setActiveLeaf(existingLeaf);
+            this.app.workspace.setActiveLeaf(existingLeaf);
 
             // Use instanceof check instead of type casting
             if (existingLeaf.view instanceof MarkdownView) {
@@ -842,7 +842,7 @@ export class TaskView extends ItemView {
         // trigger a full re-render to move the file to completed notes
         if (openTasks.length === 0 && completedTasks.length > 0 &&
             section.closest('.dtl-active-notes-section')) {
-            this.renderTaskList();
+            await this.renderTaskList();
             return;
         }
 
@@ -966,9 +966,11 @@ export class TaskView extends ItemView {
         
         // Sync checkbox state to ensure visual and functional states match
         this.syncCheckboxState();
-        
+
         if (!this.isLoading) {
-            this.renderTaskList();
+            void this.renderTaskList().catch(err => {
+                console.error('Error rendering task list after update:', err);
+            });
         }
     }
     
@@ -982,12 +984,11 @@ export class TaskView extends ItemView {
     async onClose(): Promise<void> {
         // Clean up caches to prevent memory leaks
         this.fileStatsCache.clear();
-        this.pendingFileStats.clear();
-        
+
         // Clean up existing markdown components
         this.markdownComponents.forEach(component => component.unload());
         this.markdownComponents = [];
-        
+
         await super.onClose();
     }
 }

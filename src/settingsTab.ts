@@ -117,13 +117,13 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 .addOption('name-desc', 'Name (Z to A)')  // Sort by file name (descending)
                 .addOption('created-desc', 'Created (newest)') // Sort by file creation date (descending)
                 .addOption('created-asc', 'Created (oldest)') // Sort by file creation date (ascending)
-                .addOption('lastModified-desc', 'Modified (newest)') // Sort by file modification date (descending)
-                .addOption('lastModified-asc', 'Modified (oldest)') // Sort by file modification date (ascending)
+                .addOption('modified-desc', 'Modified (newest)') // Sort by file modification date (descending)
+                .addOption('modified-asc', 'Modified (oldest)') // Sort by file modification date (ascending)
                 .setValue(`${this.plugin.settings.sortPreference.field}-${this.plugin.settings.sortPreference.direction}`) // Set the current value
                 .onChange(async (value) => { // Handle value changes
                     const [field, direction] = value.split('-'); // Split the value into field and direction
                     this.plugin.settings.sortPreference = {
-                        field: field as 'name' | 'created' | 'lastModified', // Type assertion for field
+                        field: field as 'name' | 'created' | 'modified', // Type assertion for field
                         direction: direction as 'asc' | 'desc' // Type assertion for direction
                     };
                     await this.plugin.saveSettings(); // Save the new setting
@@ -158,7 +158,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.showFileHeaders = value;
                     await this.plugin.saveSettings();
-                    await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    this.plugin.refreshTaskView(); // Refresh view to apply changes
                     this.display(); // Re-render settings to show/hide conditional setting
                 }));
 
@@ -172,7 +172,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.showFileHeaderDates = value;
                         await this.plugin.saveSettings();
-                        await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                        this.plugin.refreshTaskView(); // Refresh view to apply changes
                     }));
             
             // Style as a sub-setting with indentation
@@ -189,7 +189,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.moveCompletedTasksToBottom = value;
                         await this.plugin.saveSettings();
-                        await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                        this.plugin.refreshTaskView(); // Refresh view to apply changes
                     }));
             
             // Style as a sub-setting with indentation
@@ -205,7 +205,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 .onChange(async (value) => { // Handle value changes
                     this.plugin.settings.enableWikiLinks = value;
                     await this.plugin.saveSettings(); // Save setting
-                    await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    this.plugin.refreshTaskView(); // Refresh view to apply changes
                 }));
 
         // Setting to enable/disable URL links in the task view
@@ -217,7 +217,7 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
                 .onChange(async (value) => { // Handle value changes
                     this.plugin.settings.enableUrlLinks = value;
                     await this.plugin.saveSettings();  // Save setting
-                    await this.plugin.refreshTaskView(); // Refresh view to apply changes
+                    this.plugin.refreshTaskView(); // Refresh view to apply changes
                 }));
 
         // Include folders

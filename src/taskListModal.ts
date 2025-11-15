@@ -122,8 +122,9 @@ export class TaskListModal extends Modal {
                 });
 
                 // Add click listener to checkbox for toggling
-                checkbox.addEventListener('click', () =>
-                    this.handleTaskToggle(task, checkbox, taskText));
+                checkbox.addEventListener('click', () => {
+                    void this.handleTaskToggle(task, checkbox, taskText);
+                });
             });
         });
     }

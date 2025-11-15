@@ -45,7 +45,7 @@ export class TaskProcessor {
                     const lines = content.split('\n');
                     const line = lines[specificLineNumber];
                     if (this.isTaskLine(line)) {
-                        const task = await this.createTask(file, line, specificLineNumber);
+                        const task = this.createTask(file, line, specificLineNumber);
                         if (task) {
                             tasks.push(task);
                         }
@@ -71,7 +71,7 @@ export class TaskProcessor {
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i];
                     if (this.isTaskLine(line)) {
-                        const task = await this.createTask(file, line, i);
+                        const task = this.createTask(file, line, i);
                         if (task) {
                             tasks.push(task);
                         }
@@ -136,7 +136,7 @@ export class TaskProcessor {
      * @param lineNumber - The line number of the task.
      * @returns A Task object or null if task creation fails.
      */
-    private async createTask(file: TFile, line: string, lineNumber: number): Promise<Task | null> {
+    private createTask(file: TFile, line: string, lineNumber: number): Task | null {
         try {
             // Extract task text and handle completion date
             const isChecked = line.includes('[x]') || line.includes('[X]');
