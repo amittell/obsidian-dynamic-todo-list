@@ -809,7 +809,7 @@ export class TaskView extends ItemView {
 
         if (existingLeaf) {
             // Activate and focus the existing leaf
-            await this.app.workspace.setActiveLeaf(existingLeaf);
+            this.app.workspace.setActiveLeaf(existingLeaf);
 
             // Use instanceof check instead of type casting
             if (existingLeaf.view instanceof MarkdownView) {

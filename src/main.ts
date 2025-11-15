@@ -294,7 +294,7 @@ export default class DynamicTodoList extends Plugin {
     /**
      * Called when the plugin is unloaded.  Handles cleanup.
      */
-    async onunload() {
+    onunload() {
         // Cleanup will be handled automatically
     }
 }
