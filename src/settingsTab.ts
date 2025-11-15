@@ -222,7 +222,9 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
 
         // Include folders
         const includeContainer = containerEl.createDiv('include-folders');
-        includeContainer.createEl('h4', { text: 'Include folders' });
+        new Setting(includeContainer)
+            .setName('Include folders')
+            .setHeading();
 
         // Loop through existing include paths and create settings for each
         this.plugin.settings.folderFilters.include.forEach((path, index) => {
@@ -258,7 +260,9 @@ export class DynamicTodoListSettingTab extends PluginSettingTab {
 
         // Exclude folders
         const excludeContainer = containerEl.createDiv('exclude-folders');
-        excludeContainer.createEl('h4', { text: 'Exclude folders' });
+        new Setting(excludeContainer)
+            .setName('Exclude folders')
+            .setHeading();
 
         // Loop through existing exclude paths and create settings for each
         this.plugin.settings.folderFilters.exclude.forEach((path, index) => {
